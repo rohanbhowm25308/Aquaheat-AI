@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Data Sources &amp; Methodology · AquaHeat AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet"><style>
+:root{--bg:#050a14;--glass:rgba(10,20,38,.7);--line:rgba(120,190,255,.16);--cy:#27d3f5;--or:#ff8a1f;--tx:#eaf2ff;--mu:#8aa0bd}*{box-sizing:border-box;margin:0}
+body{background:radial-gradient(60% 50% at 8% 10%,#0b3a6a66,transparent 70%),radial-gradient(50% 45% at 92% 90%,#7a2a0a55,transparent 70%),#050a14;color:var(--tx);font:400 16px/1.6 Manrope,system-ui,sans-serif;padding:0 5vw 60px}
+a{color:var(--cy);text-decoration:none}header{display:flex;justify-content:space-between;padding:22px 0}header b{font-weight:800}header b i{color:var(--or);font-style:normal}
+h1{font-size:38px;font-weight:800;margin:20px 0 6px}h2{font-size:22px;margin:42px 0 12px}.mu{color:var(--mu)}.card{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mu);font-weight:600}
+.tag{display:inline-block;font:700 11px Manrope;padding:3px 9px;border-radius:20px}.tag.live{background:#3ddc8426;color:#3ddc84}.tag.sim{background:#ffd23f22;color:#ffd23f}.tag.proto{background:#8b7bff26;color:#b3a8ff}
+.pipe{display:flex;flex-wrap:wrap;gap:10px}.stage{flex:1;min-width:140px;display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0006;font-size:14px}.stage .mu{font-size:12px}
+.arr{align-self:center;color:var(--mu);font-size:22px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#667}.dot.active{background:#3ddc84;box-shadow:0 0 10px #3ddc84}.dot.fallback{background:#ffd23f}
+ul{margin-left:20px;color:#cfe0f5}li{margin:4px 0}.x{overflow-x:auto}</style></head><body>
+<header><b>AQUA<i>HEAT</i> AI</b><a href="/">← Back to dashboard</a></header>
+<h1>Data Sources &amp; Methodology</h1><p class="mu">What is real, what is estimated, and what is simulated. <span id="mode"></span></p>
+<h2>How AquaHeat AI works</h2><div class="card"><div class="pipe" id="pipe"></div><p class="mu" style="margin-top:12px;font-size:14px">Environmental data, then Amazon S3 storage, processing and feature engineering, the Nexus engine (gradient boosting), Amazon SageMaker AI inference, Amazon Bedrock explanation, the AquaHeat agent, and the Flask API with the UI. Green dots are active; yellow dots mean a fallback is in use.</p></div>
+<h2>Model information</h2><div class="card x"><table id="minfo"></table></div>
+<h2>Input features</h2><div class="card x"><table id="feat"><tr><th>Feature</th><th>Meaning</th><th>Range</th><th>Data status</th></tr></table></div>
+<h2>Indicator data sources</h2><div class="card x"><table id="ind"><tr><th>Indicator</th><th>Dataset</th><th>Status</th><th>Note</th></tr></table></div>
+<h2>Water-demand reference data</h2><div class="card"><p class="mu" id="wk"></p><div class="x"><table id="wref"><tr><th>Figure</th><th>MLD</th><th>Note</th></tr></table></div><p style="margin-top:12px" id="wm"></p><ul id="wsrc" style="margin-top:8px"></ul></div>
+<h2>Scoring, explanations and confidence</h2><div class="card"><ul>
+<li><b>Nexus score:</b> the model outputs one 0 to 100 score from four features. Levels: <span id="lv"></span>.</li>
+<li><b>Why (explainability):</b> each factor is reset to its seasonal baseline and the drop in score is reported as that factor's points. These are model attributions, not causal proof.</li>
+<li><b>Confidence:</b> 12 models trained on resampled data predict under 20 random perturbations of the inputs (240 draws). Confidence is the share of draws that land in the same risk level; the likely range is the 5th to 95th percentile. The input-uncertainty sizes are assumptions.</li>
+<li><b>What-If:</b> the same model re-scores the scenario. The rainfall slider is a percent change in rainfall (drier means higher deficit and higher risk).</li>
+<li><b>30-day projection:</b> a scenario-based projection from the model, not a weather forecast.</li></ul></div>
+<h2>Limitations and roadmap</h2><div class="card"><ul>
+<li>The model is trained on simulated environmental-stress data. Hold-out scores are measured against the same simulator, so they show the model learned the simulation, not real-world accuracy.</li>
+<li>Live mode uses real Open-Meteo temperature, rainfall and soil moisture. Vegetation is a soil-moisture proxy, not NDVI. Water demand is anchored to press-reported Gurugram figures (not meter data) for Gurugram-area locations and modelled elsewhere; no open live water-demand feed exists for NCR.</li>
+<li>Roadmap: train on historical IMD, CGWB and satellite NDVI data, validate against observed shortages, and add utility meter data.</li></ul></div>
+<script>const $=id=>document.getElementById(id);
+Promise.all([fetch('/api/model').then(r=>r.json()),fetch('/api/pipeline').then(r=>r.json())]).then(([m,p])=>{
+$('mode').textContent=p.headline;
+$('pipe').innerHTML=p.stages.map(s=>`<div class="stage"><span><i class="dot ${s.state}"></i> <b>${s.name}</b></span><span class="mu">${s.detail}</span></div>`).join('<span class="arr">›</span>');
+const t=m.training,rows=[['Algorithm',m.algorithm],['Task','Predict the Heat-Water Nexus Risk'],['Input features',m.features.length],['Output',m.output],['Confidence ensemble',m.ensemble+' models'],['Training data',t.source+' ('+t.samples+' samples)'],['Hold-out (simulated)','R² '+t.holdout.r2+', MAE '+t.holdout.mae+' points'],['Inference engine',m.engine],['Explanation layer',m.llm]];
+$('minfo').innerHTML=rows.map(r=>`<tr><th style="width:220px">${r[0]}</th><td>${r[1]}</td></tr>`).join('');
+$('feat').innerHTML+=m.features.map(f=>`<tr><td><b>${f.name}</b></td><td>${f.desc}</td><td>${f.range}</td><td>${f.status}</td></tr>`).join('');
+$('ind').innerHTML+=p.sources.map(s=>`<tr><td>${s.icon} <b>${s.label}</b></td><td>${s.dataset}</td><td><span class="tag ${s.tag}">${s.status}</span></td><td>${s.note}</td></tr>`).join('');
+$('lv').textContent=Object.entries(m.levels).map(([k,v])=>k+' '+v).join(', ')}).catch(()=>{$('mode').textContent='Could not load live details. Is the server running?'});fetch('/api/waterref').then(r=>r.json()).then(w=>{$('wk').textContent=w.area+'. '+w.kind+'.';$('wref').innerHTML+=w.figures.map(f=>`<tr><td>${f.label}</td><td>${f.mld}</td><td>${f.note}</td></tr>`).join('');$('wm').innerHTML='<b>Method:</b> '+w.method;$('wsrc').innerHTML=w.sources.map(s=>`<li><a href="${s.url}" target="_blank" rel="noopener">${s.name}</a></li>`).join('')}).catch(()=>{});</script></body></html>

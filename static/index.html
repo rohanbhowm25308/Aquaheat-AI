@@ -1,0 +1,288 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AquaHeat AI — Predict Heat. Protect Water. Prevent Crisis.</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050a14;--glass:rgba(10,20,38,.62);--line:rgba(120,190,255,.16);--cy:#27d3f5;--or:#ff8a1f;--tx:#eaf2ff;--mu:#8aa0bd}
+*{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font:400 16px/1.55 Manrope,system-ui,sans-serif}
+nav{position:fixed;inset:0 0 auto;z-index:9;display:flex;align-items:center;gap:28px;padding:14px 4vw;background:linear-gradient(#050a14ee,#050a1400)}
+nav b{font-weight:800;letter-spacing:.5px;margin-right:auto}nav b i{color:var(--or);font-style:normal}
+nav a{color:var(--mu);text-decoration:none;font-size:14px}nav a:hover{color:var(--tx)}
+.hero{min-height:100vh;position:relative;display:flex;align-items:center;padding:0 4vw;overflow:hidden}
+.hero:after{pointer-events:none;content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 14% 52%,#050a14a8 10%,transparent 58%)}
+.hero .in{position:relative;z-index:2;max-width:560px}
+.hero small{color:var(--cy);font-weight:600;font-size:13px}
+h1{font-size:clamp(42px,6vw,76px);line-height:1.02;font-weight:800;margin:14px 0 20px;letter-spacing:-1.5px}
+h1 span:nth-child(1){color:var(--or)}h1 span:nth-child(2){color:var(--cy)}
+.hero p{color:#b9c9de;max-width:470px;margin-bottom:28px}
+.btn{display:inline-block;padding:13px 24px;border-radius:10px;font-weight:600;text-decoration:none;color:#fff;border:1px solid var(--line);margin-right:10px;cursor:pointer;background:none;font-family:inherit;font-size:15px}
+.btn.p{background:linear-gradient(135deg,#ff8a1f,#ff5a1f);border:0;box-shadow:0 6px 28px #ff8a1f44}
+section{padding:90px 4vw;position:relative}section h2{font-size:32px;font-weight:800;margin-bottom:6px}.sub{color:var(--mu);margin-bottom:30px}
+.grid{display:grid;gap:18px}.g2{grid-template-columns:1.1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:0 10px 40px #0006}
+.dash{background:radial-gradient(ellipse at 80% 0,#0b2a4a55,transparent 60%),repeating-linear-gradient(0deg,#78beff09 0 1px,transparent 1px 48px),repeating-linear-gradient(90deg,#78beff09 0 1px,transparent 1px 48px)}
+.nexus{display:flex;gap:28px;align-items:center;flex-wrap:wrap}.ring{position:relative;width:230px;height:230px}
+.ring svg{transform:rotate(-90deg)}.ring .n{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .n b{font-size:64px;line-height:1;font-weight:800}.ring .n span{color:var(--mu)}
+.lv{font-weight:800;letter-spacing:1px}.met{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.met div{border-left:2px solid var(--cy);padding-left:12px}.met b{font-size:30px;display:block;line-height:1.1}.met span{color:var(--mu);font-size:13px}
+.why .row{display:flex;justify-content:space-between;font-size:14px;margin:12px 0 4px}.bar{height:6px;border-radius:4px;background:#ffffff14;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cy),var(--or))}
+.tabs button{margin:0 8px 14px 0;padding:8px 16px;border-radius:20px;border:1px solid var(--line);background:none;color:var(--mu);cursor:pointer;font-family:inherit}
+.tabs button.on{background:var(--cy);color:#041018;border-color:var(--cy);font-weight:600}
+.map{position:relative;height:430px;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%,#0a2540,#050a14 75%),repeating-linear-gradient(0deg,#27d3f50d 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,#27d3f50d 0 1px,transparent 1px 36px)}
+.pt{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;border:2px solid #fff9;transition:background .6s,box-shadow .6s}
+.pt:before{content:"";position:absolute;inset:-6px;border-radius:50%;border:1px solid currentColor;animation:pulse 2.4s infinite}
+@keyframes pulse{from{transform:scale(.8);opacity:.9}to{transform:scale(2.2);opacity:0}}
+.pt em{position:absolute;top:30px;left:50%;transform:translateX(-50%);font:600 11px Manrope;color:#cfe0f5;white-space:nowrap;font-style:normal}
+.info h3{font-size:26px}.info .k{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+.rad .card{border-top:2px solid var(--or)}.rad .card:nth-child(even){border-top-color:var(--cy)}.rad small{color:var(--mu)}.rad b{display:block;font-size:19px;margin:6px 0}
+.sl{margin:18px 0}.sl label{display:flex;justify-content:space-between;font-size:14px;color:var(--mu)}input[type=range]{width:100%;accent-color:var(--cy)}
+.big{font-size:56px;font-weight:800;line-height:1}.chat{min-height:230px;white-space:pre-wrap;color:#cfe0f5;margin:16px 0}
+.ask{display:flex;gap:10px}.ask input,select{flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0006;color:var(--tx);font:inherit}
+.act{border-top:2px solid var(--cy)}.alert{border-color:#ff8a1f88;box-shadow:0 0 40px #ff8a1f22}.mu{color:var(--mu)}
+footer{padding:40px 4vw;color:var(--mu);font-size:13px;text-align:center}
+@media(max-width:860px){.g2,.g4,.g3{grid-template-columns:1fr}nav a:not(.bell){display:none}.map{height:340px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+
+canvas#pt{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.55}
+section{z-index:1;isolation:isolate}
+.bgmap{background:radial-gradient(ellipse at 15% 30%,#27d3f51c,transparent 55%),radial-gradient(ellipse at 90% 80%,#ff8a1f1c,transparent 50%)}
+.atmo:before,.sat{background:repeating-linear-gradient(0deg,#ff8a1f08 0 2px,transparent 2px 5px)}
+.flow{background:linear-gradient(120deg,#050a14c8,#06203ac0,#2a1205c0,#050a14c8);background-size:300% 300%;animation:fl 40s ease infinite}
+@keyframes fl{50%{background-position:100% 50%}}
+.water{background:radial-gradient(ellipse at 50% 0,#0a3a5c66,transparent 65%)}
+.bell{position:relative;font-size:18px}.bell[data-n="1"]:after{content:"";position:absolute;top:-2px;right:-4px;width:8px;height:8px;border-radius:50%;background:#ff3b3b}
+.pf{position:relative}.pf>button{width:34px;height:34px;border-radius:50%;border:1px solid var(--cy);background:#0a1a30;color:var(--cy);font:700 12px Manrope;cursor:pointer}
+.pm{display:none;position:absolute;right:0;top:46px;width:250px;padding:18px}.pm.open{display:block}.pm label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
+.hm{display:grid;grid-template-columns:repeat(14,1fr);gap:2px}.hm i{aspect-ratio:1;border-radius:3px;display:block;transition:background .6s}
+.lg{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--mu)}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.ln{stroke-dasharray:1;stroke-dashoffset:1;animation:dr 1.6s forwards}@keyframes dr{to{stroke-dashoffset:0}}
+.lb .r{display:flex;align-items:center;gap:12px;margin:12px 0}.lb .r span:first-child{width:90px}.lb .bar{flex:1;height:10px}.lb b{width:90px;text-align:right}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chips button{padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:none;color:var(--mu);cursor:pointer;font:inherit;font-size:14px}.chips button.on{background:var(--cy);color:#041018;border-color:var(--cy);font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.err{color:#ff8a8a}
+.act ul{margin:10px 0 0 18px;color:#b9c9de;font-size:14px}.act .ic{font-size:30px}
+@media(max-width:860px){.bell{display:inline-block!important}.hm{gap:1px}}
+#g3{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+.nogl:before{content:"";position:absolute;right:6%;top:15%;width:50vh;height:50vh;border-radius:50%;background:radial-gradient(circle at 35% 35%,#1e7fb0,#06203a 60%,#020712);box-shadow:0 0 80px #27d3f544,40px 20px 120px #ff8a1f33}
+#bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(60% 50% at 8% 18%,#0b3a6a66,transparent 70%),radial-gradient(50% 45% at 92% 88%,#7a2a0a55,transparent 70%),radial-gradient(45% 40% at 55% 45%,#0a4a6a40,transparent 70%),#050a14;animation:aur 32s ease-in-out infinite alternate}
+#bg:after{content:"";position:absolute;inset:0;background-image:linear-gradient(#78beff0f 1px,transparent 1px),linear-gradient(90deg,#78beff0f 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse at 50% 45%,#000 15%,transparent 78%);mask-image:radial-gradient(ellipse at 50% 45%,#000 15%,transparent 78%)}
+@keyframes aur{to{transform:scale(1.18) translate(-2.5%,2%)}}
+
+.conf{margin-top:16px}.conf .bar i{transition:width 1s;background:linear-gradient(90deg,#27d3f5,#3ddc84)}
+.tag{display:inline-block;font:700 11px Manrope;padding:3px 9px;border-radius:20px;letter-spacing:.5px}.tag.live{background:#3ddc8426;color:#3ddc84}.tag.sim{background:#ffd23f22;color:#ffd23f}.tag.proto{background:#8b7bff26;color:#b3a8ff}
+.pipe{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}.stage{flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0006;font-size:14px}.stage .mu{font-size:12px}
+.arr{align-self:center;color:var(--mu);font-size:22px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#667}.dot.active{background:#3ddc84;box-shadow:0 0 10px #3ddc84}.dot.fallback{background:#ffd23f}
+.spot{outline:2px solid var(--cy);outline-offset:8px;border-radius:16px;box-shadow:0 0 50px #27d3f544;transition:.4s}
+#tour{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:30;width:min(700px,92vw)}#tour[hidden]{display:none}
+#tour .tw{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between;background:#07121fee;border:1px solid var(--cy);border-radius:16px;padding:14px 18px;box-shadow:0 10px 50px #000a}
+#tour #tt{flex:1;min-width:220px;font-weight:600}#tour .btn{padding:8px 16px;margin:0 0 0 6px;font-size:14px}.td{display:flex;gap:5px;width:100%}.td i{height:3px;flex:1;border-radius:2px;background:#ffffff22}.td i.on{background:var(--cy)}
+
+#dash .grid{grid-template-columns:1fr}#why{display:grid;grid-template-columns:1fr 1fr;gap:2px 44px}
+.brand{font:800 15px Manrope;letter-spacing:7px;margin-bottom:8px}
+.cmp{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.cmp .big{font-size:64px}.arrow{font-size:30px;color:var(--cy)}
+.trk{position:relative;margin:30px 0 4px}.track{display:flex;height:12px;border-radius:6px;overflow:hidden}.track i{display:block}.z1{width:35%;background:#3ddc84}.z2{width:20%;background:#ffd23f}.z3{width:20%;background:#ff8a1f}.z4{width:25%;background:#ff3b3b}
+.trk b{position:absolute;top:-6px;left:0;width:4px;height:24px;border-radius:2px;background:#fff;transition:left .9s cubic-bezier(.2,.8,.2,1)}#mk1{opacity:.55}#mk2{box-shadow:0 0 14px #fff}
+.tl{display:flex;font-size:11px;color:var(--mu)}.tl span:nth-child(1){width:35%}.tl span:nth-child(2),.tl span:nth-child(3){width:20%}
+.ends{display:flex;justify-content:space-between;font-size:11px;color:var(--mu)}.tag.bad{background:#ff3b3b26;color:#ff6b6b}.tag.good{background:#3ddc8426;color:#3ddc84}
+.ins{margin-top:14px;padding:12px;border-left:3px solid var(--cy);background:#27d3f510;border-radius:8px;color:#cfe0f5}
+.ares{min-height:230px;margin:16px 0}.qb{background:#27d3f514;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.ai .ah{font-weight:800;letter-spacing:.5px;font-size:12px;color:var(--cy);margin:14px 0 6px;text-transform:uppercase}.ai p{color:#cfe0f5}
+.dr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}.lvl{font-weight:700}.lvl.High{color:#ff6b4a}.lvl.Moderate{color:#ffd23f}.lvl.Low{color:#3ddc84}
+.ai ol{margin-left:20px;color:#cfe0f5}#arest{transition:opacity .6s}footer a{color:var(--cy);text-decoration:none;margin:0 10px}
+@media(max-width:860px){#why{grid-template-columns:1fr}}
+#sf{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+</style></head><body>
+<nav><b>AQUA<i>HEAT</i> AI</b><a href="#dash">Dashboard</a><a href="#map">Risk Map</a><a href="#radar">Predictions</a><a href="#whatif">What-If</a><a href="#agent">AI Agent</a><a href="#impact">Impact</a><a href="#how">Data</a><a href="/methodology">Methodology</a><a href="#alert" class="bell" id="bell" data-n="1" title="Alerts">🔔</a>
+<div class="pf"><button onclick="$('pfm').classList.toggle('open')" title="Profile">AH</button><div class="card pm" id="pfm"><b>Guest analyst</b><label>Default location</label><select id="pl" onchange="saveP()"></select><label>Alerts</label><button class="btn nb" style="margin:0" id="nbtn2" onclick="notif()">Enable browser alerts</button></div></div></nav><div id="bg"></div><canvas id="sf"></canvas><canvas id="g3" aria-label="Interactive 3D globe"></canvas><canvas id="pt"></canvas>
+
+<header class="hero"><div class="in">
+<div class="brand">AQUAHEAT AI</div><small>AI-POWERED HEAT &amp; WATER RESILIENCE PLATFORM</small>
+<h1><span>Predict Heat.</span><br><span>Protect Water.</span><br><span>Prevent Crisis.</span></h1>
+<p>Turn environmental data into early warnings, intelligent predictions, and actionable climate resilience.</p>
+<a class="btn p" href="#map">Explore Risk Map</a><a class="btn" href="#whatif">Run Prediction</a><a class="btn" onclick="tour()" style="border-color:var(--cy);color:var(--cy)">▶ 30-second demo</a></div></header>
+
+<section class="dash" id="dash"><h2>Environmental Intelligence Dashboard</h2><p class="sub">AI-generated environmental risk assessment. <span id="st" class="mu"></span></p><div class="chips" id="modechips" style="margin:-14px 0 24px"><button class="on" data-m="0">Demo scenario</button><button data-m="1">Live data</button></div>
+<div class="grid g2"><div class="card nexus">
+<div class="ring"><svg width="230" height="230"><circle cx="115" cy="115" r="100" fill="none" stroke="#ffffff14" stroke-width="14"/><circle id="arc" cx="115" cy="115" r="100" fill="none" stroke="#ff3b3b" stroke-width="14" stroke-linecap="round" stroke-dasharray="628" stroke-dashoffset="628" style="transition:stroke-dashoffset 1.4s,stroke .6s"/></svg>
+<div class="n"><b id="nx">0</b><span>/ 100</span><div class="lv" id="nl"></div></div></div>
+<div style="flex:1;min-width:220px"><div class="mu" style="font-size:14px">Heat-Water Nexus Score · <span id="dloc">Gurugram</span></div>
+<div class="met" style="margin:14px 0"><div><b id="m1">-</b><span>Heat Risk</span></div><div><b id="m2">-</b><span>Water Stress</span></div><div><b id="m3">-</b><span>Demand Pressure</span></div><div><b id="m4">-</b><span>Rainfall Deficit</span></div></div>
+<p style="font-size:14px;color:#b9c9de">High temperatures are increasing predicted water demand while rainfall remains below normal.</p><div class="conf"><div class="bar"><i id="cbar" style="width:0"></i></div><div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Prediction confidence <b id="cv"></b></span><span class="mu" id="cr"></span></div><p class="mu" style="font-size:12px;margin-top:4px" id="cn"></p></div></div></div>
+<div class="card why"><h3 id="whyh">Why is the score high?</h3><div id="why"></div><div class="row" style="margin-top:18px;font-weight:800"><span>Final Score</span><span id="fin"></span></div></div></div></section>
+
+<section id="map" class="bgmap"><h2>AI Environmental Risk Map</h2><p class="sub">Select a layer, then click a location.</p>
+<div class="tabs" id="tabs"><button class="on" data-k="heat">Heat Risk</button><button data-k="water">Water Stress</button><button data-k="nexus">Nexus Risk</button><button data-k="future">Future Risk</button></div>
+<div class="grid g2"><div class="map" id="mapbox"></div><div class="card info" id="info"></div></div></section>
+
+<section id="heat" class="sat"><h2>Heat Island Detection</h2><p class="sub">Satellite-style scan of <b id="hln">Gurugram</b>: temperature, vegetation, building density and surface.</p>
+<div class="grid g2"><div class="card"><div id="hmap" class="hm"></div><div class="lg"><span><i style="background:#ff4a2e"></i>Heat island zone</span><span><i style="background:#4a6fa5"></i>High-density zone</span><span><i style="background:#2fbf71"></i>Green zone</span><span><i style="background:#1b2c44"></i>Mixed</span></div></div>
+<div class="card why"><div class="mu">HEAT ISLAND RISK</div><div class="big" id="hrisk">-</div><div id="hfac"></div><p id="hrec" style="margin-top:16px;color:#b9c9de"></p></div></div></section>
+<section id="radar" class="atmo"><h2>Future Crisis Radar</h2><p class="sub">From monitoring to prediction.</p>
+<div class="grid g4 rad"><div class="card"><small>NEXT 24 HOURS</small><b>Heat Risk ↑</b><span>Temperature climbs above seasonal baseline.</span></div>
+<div class="card"><small>NEXT 72 HOURS</small><b>Water Demand ↑</b><span>Cooling and household use rise ~18%.</span></div>
+<div class="card"><small>NEXT 7 DAYS</small><b>Combined Risk → HIGH</b><span>Rainfall deficit persists.</span></div>
+<div class="card"><small>NEXT 30 DAYS</small><b>Potential Water Stress</b><span>Storage and groundwater under pressure.</span></div></div><div class="card" style="margin-top:18px"><h3>30-Day Risk Projection: <span id="fln">Gurugram</span></h3><div id="fch"></div><p class="mu" style="font-size:13px;margin-top:8px">Scenario-based projection from the risk model. It is not a weather forecast.</p><div class="lg"><span><i style="background:#fff"></i>Nexus</span><span><i style="background:#ff8a1f"></i>Heat</span><span><i style="background:#27d3f5"></i>Water</span><span id="fpk"></span></div></div></section>
+
+<section id="whatif" class="water"><h2>What If?</h2><p class="sub">Change the climate. Watch the risk move.</p>
+<div class="chips" id="presets" style="margin-bottom:18px"><button data-p="2,-20,10">+2°C and drier</button><button data-p="4,-40,25">Heatwave +4°C</button><button data-p="1,-30,0">Dry spell</button><button data-p="0,0,-20">Save 20% water</button><button data-p="0,10,-10">Monsoon recovery</button></div>
+<div class="grid g2"><div class="card">
+<div class="sl"><label>Temperature <b id="v1"></b></label><input type="range" id="s1" min="0" max="5" step=".5" value="2"><div class="ends"><span>+0°C</span><span>+5°C</span></div></div>
+<div class="sl"><label>Rainfall <b id="v2"></b></label><input type="range" id="s2" min="-50" max="20" value="-20"><div class="ends"><span>-50%</span><span>+20%</span></div></div>
+<div class="sl"><label>Water Consumption <b id="v3"></b></label><input type="range" id="s3" min="-30" max="50" value="10"><div class="ends"><span>-30%</span><span>+50%</span></div></div></div>
+<div class="card"><div class="cmp"><div><small class="mu">Current risk</small><div class="big" id="cur">-</div></div><div class="arrow">→</div><div><small class="mu">Simulated risk</small><div class="big" id="sim">-</div><span id="dl" class="tag sim"></span></div></div>
+<div class="trk"><div class="track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i></div><b id="mk1" title="Current"></b><b id="mk2" title="Simulated"></b></div>
+<div class="tl"><span>LOW</span><span>MODERATE</span><span>HIGH</span><span>CRITICAL</span></div>
+<div class="mu" id="simc" style="font-size:13px;margin:10px 0"></div><div class="why" id="simd"></div>
+<p class="ins" id="simtxt"><b>AI Insight:</b> <span id="simi"></span></p><p class="mu" id="simm" style="margin-top:10px;font-size:14px"></p></div></div></section>
+
+<section id="agent" class="flow"><h2>🤖 AquaHeat Intelligence</h2><p class="sub">Environmental Decision Agent, grounded in the model's output rather than a general chatbot.</p>
+<div class="grid g2"><div class="card"><div class="chips" id="qchips" style="margin-bottom:12px"><button>Why is the risk high?</button><button>What should citizens do?</button><button>What should authorities do?</button></div>
+<div class="ask"><input id="q"><button class="btn p" style="margin:0" onclick="ask()">Analyze</button></div>
+<div class="ares" id="ares">Ask about any location on the map.</div><small id="src" class="mu"></small></div>
+<div class="card why"><h3>Model drivers (points)</h3><div id="why2"></div></div></div></section>
+
+<section id="tools" class="water"><h2>Water Tools</h2><p class="sub">Plan usage and capture rainfall.</p>
+<div class="grid g2"><div class="card"><h3>Smart Water Budget</h3><br><div class="chips" id="bchips"></div>
+<div class="grid g3" style="margin:20px 0"><div><small class="mu">Recommended</small><div class="big" style="font-size:28px" id="br"></div></div><div><small class="mu">Estimated</small><div class="big" style="font-size:28px;color:var(--or)" id="be"></div></div><div><small class="mu">Potential saving</small><div class="big" style="font-size:28px;color:var(--cy)" id="bs"></div></div></div>
+<div class="why" id="bparts"></div><p style="margin-top:16px;color:#b9c9de"><b>AI Action Plan:</b> <span id="bplan"></span></p></div>
+<div class="card"><h3>Rainwater Harvesting Optimizer</h3><div class="sl"><label>Roof area <b id="r1"></b></label><input type="range" id="ra" min="30" max="2000" value="120"></div>
+<div class="two"><div><label class="mu" style="font-size:13px">Location</label><select id="hl" style="width:100%"></select></div><div><label class="mu" style="font-size:13px">Building type</label><select id="hb" style="width:100%"><option>House</option><option>Apartment</option><option>School</option><option>Office</option><option>Factory</option></select></div></div>
+<div class="sl"><label>Average annual rainfall <b id="r2"></b></label><input type="range" id="rr" min="200" max="1500" value="550"></div>
+<div class="two"><div><small class="mu">Annual capture</small><div class="big" style="font-size:34px;color:var(--cy)" id="rc"></div></div><div><small class="mu">Recommended storage</small><div class="big" style="font-size:34px" id="rt"></div></div></div>
+<div class="two" style="margin-top:16px"><div class="card" style="padding:14px"><small class="mu">Without harvesting</small><div id="rw" class="lv"></div></div><div class="card" style="padding:14px"><small class="mu">With harvesting</small><div id="rh" class="lv"></div></div></div>
+<p style="margin-top:12px;color:#b9c9de"><b>AI Recommendation:</b> <span id="rs"></span></p></div></div></section>
+
+<section id="impact" class="water"><h2>Impact Simulator</h2><p class="sub">Small actions × many people.</p>
+<div class="card"><div class="sl"><label>Households <b id="i1"></b></label><input type="range" id="ih" min="1000" max="100000" step="1000" value="10000"></div>
+<div class="grid g3"><div><small class="mu">Saved per household/day</small><div class="big">20 L</div></div><div><small class="mu">Total per day</small><div class="big" style="color:var(--cy)" id="id"></div></div><div><small class="mu">Per year</small><div class="big" style="color:var(--cy)" id="iy"></div></div></div></div></section>
+
+<section id="challenge" class="atmo"><h2>Community Green Challenge</h2><p class="sub">Compete with your sector. Every litre and every action counts.</p>
+<div class="tabs" id="ctabs"><button class="on" data-k="water">7-Day Water Saver</button><button data-k="heat">Heat Resilience</button></div>
+<div class="grid g2"><div class="card lb" id="lb"></div><div class="card"><h3>Log your action</h3><div class="ask" style="margin:14px 0"><select id="csec"><option>Sector A</option><option>Sector B</option><option>Sector C</option><option>Sector D</option><option>Sector E</option></select><input id="camt" type="number" min="1" max="5000" value="50" style="max-width:110px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0006;color:var(--tx)"></div><button class="btn p" style="margin:0" onclick="logc()">Add to leaderboard</button><p class="mu" id="cmsg" style="margin-top:12px"></p></div></div></section>
+<section id="brief" class="flow"><h2>AI Crisis Brief</h2><p class="sub">One click. A decision-ready briefing for the selected location.</p>
+<button class="btn p" id="bbtn" style="margin:0 0 18px" onclick="brief()">Generate Environmental Brief</button>
+<div class="card"><div class="chat" id="bout" style="min-height:160px">Your brief will appear here.</div><button class="btn" style="margin:0" onclick="dl()">Download brief</button></div></section>
+<section id="alert"><div class="card alert"><h3>⚠ HEAT-WATER ALERT</h3><p id="alt" style="margin:8px 0 14px"></p>
+<div class="grid g3"><div><small class="mu">Primary driver</small><b style="display:block" id="al1"></b></div><div><small class="mu">Secondary driver</small><b style="display:block" id="al2"></b></div><div><small class="mu">Preparedness level</small><b style="display:block" id="alp"></b></div></div><button class="btn nb" style="margin:16px 0 0" onclick="notif()">Enable browser alerts</button><span id="nmsg" class="mu" style="margin-left:12px;font-size:14px"></span></div>
+<div class="grid g3" style="margin-top:18px"><div class="card act"><div class="ic">👤</div><h3>For Citizens</h3><ul><li>Reduce non-essential water use</li><li>Store drinking water</li><li>Avoid peak-afternoon heat</li></ul></div><div class="card act"><div class="ic">🏢</div><h3>For Buildings</h3><ul><li>Optimize cooling schedules</li><li>Fix leaks, add greywater reuse</li><li>Harvest rainwater</li></ul></div><div class="card act"><div class="ic">🏙️</div><h3>For Authorities</h3><ul><li>Prioritize high-risk zones for supply</li><li>Open cooling centres</li><li>Expand green cover in heat islands</li></ul></div></div></section>
+<section id="how" class="atmo"><h2>Data Intelligence</h2><p class="sub">Where every number comes from, and what is real versus prototype.</p>
+<div class="grid g4" id="dsrc"></div>
+<h2 style="margin-top:56px;font-size:26px">Architecture</h2><p class="sub">Environmental data to dashboard.</p>
+<div class="card"><div class="pipe" id="pipe"></div></div>
+<div class="card" style="margin-top:18px"><b>Transparency note</b> · <a href="/methodology" style="color:var(--cy)">Full data sources &amp; methodology →</a><p class="mu" style="margin-top:6px">Prototype ML model trained on simulated environmental stress data, designed to be replaceable with live environmental datasets. Scores and projections are scenario-based decision support, not official forecasts. Confidence is the share of 240 ensemble and input-uncertainty scenarios that agree on the risk level; it measures model consistency, not validated real-world accuracy. <span id="st2"></span></p></div></section>
+<div id="tour" hidden><div class="tw"><span id="tt"></span><div><button class="btn" id="tn">Next</button><button class="btn" id="tx">Skip</button></div><div class="td" id="tdots"></div></div></div>
+<footer>AquaHeat AI · Heat and Water track · <a href="/methodology">Data Sources &amp; Methodology</a><a href="#how">Data Intelligence</a></footer>
+
+<script>
+const $=id=>document.getElementById(id),col={LOW:'#3ddc84',MODERATE:'#ffd23f',HIGH:'#ff8a1f',CRITICAL:'#ff3b3b'};
+const lv=s=>s<35?'LOW':s<55?'MODERATE':s<75?'HIGH':'CRITICAL',fmt=n=>Math.round(n).toLocaleString('en-IN');
+let L=[],cur=null,layer='heat';
+function count(el,to,suf=''){const f=+el.dataset.v||0,t0=performance.now();el.dataset.v=to;(function s(t){const p=Math.min(1,(t-t0)/900);el.textContent=fmt(f+(to-f)*p)+suf;p<1&&requestAnimationFrame(s)})(t0)}
+function drivers(el,d){el.innerHTML=d.map(x=>`<div class="dv"><div class="row"><span>${x.name}</span><b>${x.value>0?'+':''}${x.value}</b></div><div class="bar"><i style="width:${Math.max(2,Math.min(100,x.value*2.6))}%"></i></div></div>`).join('')}
+function show(l){cur=l;$('dloc').textContent=l.name;count($('nx'),l.nexus);$('nl').textContent=l.level;$('nl').style.color=col[l.level];
+ $('arc').style.stroke=col[l.level];$('arc').style.strokeDashoffset=628*(1-l.nexus/100);
+ count($('m1'),l.heat);count($('m2'),l.water);count($('m3'),l.demand);count($('m4'),l.rain);drivers($('why'),l.drivers);drivers($('why2'),l.drivers);$('fin').textContent=l.nexus;
+ $('info').innerHTML=`<h3>${l.name}</h3><div class="k"><span>Heat Risk</span><b>${l.heat}</b></div><div class="k"><span>Water Stress</span><b>${l.water}</b></div><div class="k"><span>Nexus Score</span><b style="color:${col[l.level]}">${l.nexus} · ${l.level}</b></div><p style="margin-top:14px"><b>Prediction:</b> ${l.nexus>=55?'HIGH RISK IN NEXT 72 HOURS':'Stable over next 72 hours'}</p>`;
+ $('q').value=`Why is the risk ${l.nexus>=55?'high':'moderate'} in ${l.name}?`;draw();sim()}
+function val(l){return layer=='future'?Math.min(100,l.nexus+6):l[layer]}
+function draw(){$('mapbox').innerHTML=L.map(l=>{const c=col[lv(val(l))];return `<div class="pt" style="left:${l.x}%;top:${l.y}%;background:${c}cc;color:${c};box-shadow:0 0 36px 14px ${c}55" onclick="show(L.find(z=>z.name=='${l.name}'))"><em>${l.name} · ${val(l)}</em></div>`}).join('')}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');layer=b.dataset.k;draw()});
+let tm;function sim(){const t=+$('s1').value,r=+$('s2').value,c=+$('s3').value;$('v1').textContent='+'+t+'°C';$('v2').textContent=(r>0?'+':'')+r+'%';$('v3').textContent=(c>0?'+':'')+c+'%';
+ clearTimeout(tm);tm=setTimeout(async()=>{try{const d=await J('/api/simulate',{loc:cur.name,temp:t,rain:r,cons:c});count($('cur'),d.current);count($('sim'),d.simulated);$('sim').style.color=col[d.level];
+  const dl=d.simulated-d.current;$('dl').textContent=(dl>0?'+':'')+dl+' · '+d.level;$('dl').className='tag '+(dl>0?'bad':dl<0?'good':'sim');$('mk1').style.left=`calc(${d.current}% - 2px)`;$('mk2').style.left=`calc(${d.simulated}% - 2px)`;
+  $('simc').textContent=`Confidence ${d.conf}% · likely range ${d.lo}-${d.hi}`;drivers($('simd'),d.drivers);$('simi').textContent=d.insight;$('simm').textContent=d.mitigation}catch(e){$('simi').textContent='Simulation unavailable.'}},100)}
+$('presets').onclick=e=>{const b=e.target.closest('button');if(!b)return;const[t,r,c]=b.dataset.p.split(',');$('s1').value=t;$('s2').value=r;$('s3').value=c;sim()};
+['s1','s2','s3'].forEach(i=>$(i).oninput=sim);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function ask(){const q=$('q').value,box=$('ares');box.innerHTML='<span class="mu">Analyzing model output…</span>';
+ try{const d=await J('/api/agent',{loc:cur.name,q});drivers($('why2'),cur.drivers);
+  box.innerHTML='<div class="qb">'+esc(q)+'</div><div class="ai"><div class="ah">Risk Assessment · '+esc(cur.name)+' <span class="tag '+(d.nexus>=75?'bad':'sim')+'">'+d.level+' '+d.nexus+'</span></div><p id="atx"></p><div id="arest" style="opacity:0"><div class="ah">Top drivers</div>'+
+   d.drivers.map(x=>'<div class="dr"><span>'+x.emoji+' '+x.label+'</span><span class="lvl '+x.level+'">'+x.level+'</span></div>').join('')+'<div class="ah">Recommended actions</div><ol>'+d.actions.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ol></div></div>';
+  $('src').textContent=d.provider=='Offline template'?'AI layer: offline template (configure Amazon Bedrock or Groq in .env)':'AI layer: '+d.provider+', grounded in model output';
+  typeTo($('atx'),d.assessment);setTimeout(()=>{const e=$('arest');if(e)e.style.opacity=1},Math.min(2200,d.assessment.length*6))}catch(e){box.textContent='Agent unavailable. Is the server running?'}}
+$('qchips').onclick=e=>{if(e.target.tagName!='BUTTON')return;$('q').value=e.target.textContent.replace('?','')+' in '+cur.name+'?';ask()};
+function imp(){const h=+$('ih').value;$('i1').textContent=fmt(h);count($('id'),h*20,' L');count($('iy'),h*20*365/1e6,' M L')}
+$('ih').oninput=imp;imp();
+
+const J=(u,b)=>fetch(u,b?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:undefined).then(r=>{if(!r.ok)throw 0;return r.json()});
+let prof={},lastN='',tk={};try{prof=JSON.parse(localStorage.getItem('ah')||'{}')}catch(e){}
+const bd=l=>`<b style="color:${col[l]}">${l}</b>`;
+function typeTo(el,t){clearInterval(el._t);el.textContent='';let i=0;el._t=setInterval(()=>{el.textContent+=t.slice(i,i+3);i+=3;if(i>t.length)clearInterval(el._t)},12)}
+function saveP(){prof.loc=$('pl').value;try{localStorage.setItem('ah',JSON.stringify(prof))}catch(e){}show(L.find(x=>x.name==prof.loc))}
+const setNB=t=>document.querySelectorAll('.nb').forEach(b=>b.textContent=t);
+function nmsg(t){const e=$('nmsg');if(e)e.textContent=t}
+async function notif(){
+ if(!('Notification' in window)){nmsg('This browser does not support notifications.');return}
+ if(prof.notify&&Notification.permission=='granted'){prof.notify=false;try{localStorage.setItem('ah',JSON.stringify(prof))}catch(e){}setNB('Enable browser alerts');nmsg('Browser alerts are off.');return}
+ if(Notification.permission=='denied'){nmsg('Notifications are blocked. Click the lock icon in the address bar, allow Notifications, then try again.');return}
+ let p=Notification.permission;if(p!='granted'){nmsg('Please allow notifications in the browser prompt…');p=await Notification.requestPermission()}
+ prof.notify=p=='granted';try{localStorage.setItem('ah',JSON.stringify(prof))}catch(e){}
+ if(!prof.notify){setNB('Enable browser alerts');nmsg('Permission was not granted.');return}
+ setNB('Alerts enabled ✓ (click to turn off)');nmsg('You will get a notification when a location reaches CRITICAL risk.');
+ try{new Notification('AquaHeat AI alerts enabled',{body:cur?cur.name+': Nexus '+cur.nexus+' ('+cur.level+'). Alerts are on.':'Alerts are on.'})}catch(e){nmsg('Alerts are on (this browser may block pop-ups from this page).')}}
+function chart(el,S,C){const W=600,H=220,p=28,y=v=>H-p-v/100*(H-2*p),x=i=>p+i*(W-2*p)/(S[0].length-1);
+ el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%">`+[25,50,75,100].map(v=>`<line x1="${p}" x2="${W-p}" y1="${y(v)}" y2="${y(v)}" stroke="${v==75?'#ff3b3b77':'#ffffff18'}" ${v==75?'stroke-dasharray="4"':''}/><text x="2" y="${y(v)+4}" fill="#8aa0bd" font-size="10">${v}</text>`).join('')+
+ [0,1,3,7,14,30].map(d=>`<text x="${x(d)}" y="${H-8}" fill="#8aa0bd" font-size="10" text-anchor="middle">${d?'D'+d:'Now'}</text>`).join('')+
+ S.map((s,k)=>`<path class="ln" pathLength="1" d="${s.map((v,i)=>(i?'L':'M')+x(i)+','+y(v)).join('')}" fill="none" stroke="${C[k]}" stroke-width="${k?1.5:3}"/>`).join('')+'</svg>'}
+async function forecast(l){const t=tk.f=Math.random();try{const f=await J('/api/forecast?loc='+encodeURIComponent(l.name));if(t!=tk.f)return;$('fln').textContent=l.name;chart($('fch'),[f.nexus,f.heat,f.water],['#fff','#ff8a1f','#27d3f5']);
+ const pk=Math.max(...f.nexus);$('fpk').textContent=`Peak Nexus ${pk} on day ${f.nexus.indexOf(pk)}`}catch(e){$('fch').innerHTML='<p class="err">Projection unavailable.</p>'}}
+async function island(l){const t=tk.i=Math.random();try{const d=await J('/api/heatisland?loc='+encodeURIComponent(l.name));if(t!=tk.i)return;$('hln').textContent=l.name;
+ const C={heat:'#ff4a2e',dense:'#4a6fa5',green:'#2fbf71',mixed:'#1b2c44'};$('hmap').innerHTML=d.cells.flat().map(c=>`<i style="background:${C[c.z]}" title="${c.t}°C"></i>`).join('');
+ $('hrisk').innerHTML=`<span style="color:${col[d.level]}">${d.level}</span>`;const F=d.factors,r=[['Temperature',F.temp+'°C',(F.temp-30)*7],['Vegetation',F.veg+'%',F.veg],['Building density',F.dens+'%',F.dens],['Surface (impervious)',F.surface+'%',F.surface]];
+ $('hfac').innerHTML=r.map(x=>`<div class="row"><span>${x[0]}</span><b>${x[1]}</b></div><div class="bar"><i style="width:${Math.max(4,Math.min(100,x[2]))}%"></i></div>`).join('');
+ $('hrec').innerHTML=`<b>AI Recommendation:</b> ${d.share}% of this zone is a heat island. Prioritize shaded areas, green infrastructure, and cooling interventions here. Planting priority: ${d.risk>=55?'HIGH':'MODERATE'}.`}catch(e){$('hrec').textContent='Heat island data unavailable.'}}
+let bt='Household',bdeb;function budget(){if(!cur)return;clearTimeout(bdeb);bdeb=setTimeout(async()=>{try{const d=await J('/api/budget',{type:bt,loc:cur.name});
+ $('br').textContent=fmt(d.rec)+' L/day';$('be').textContent=fmt(d.est)+' L/day';$('bs').textContent=fmt(d.save)+' L/day';$('bplan').textContent=d.plan;
+ $('bparts').innerHTML=d.parts.map(p=>`<div class="row"><span>${p.name}</span><b>${fmt(p.litres)} L</b></div><div class="bar"><i style="width:${p.litres/d.est*100}%"></i></div>`).join('')}catch(e){$('bplan').textContent='Budget unavailable.'}},80)}
+let rdeb;function rain(){clearTimeout(rdeb);$('r1').textContent=$('ra').value+' m²';$('r2').textContent=$('rr').value+' mm';rdeb=setTimeout(async()=>{try{const d=await J('/api/harvest',{roof:+$('ra').value,rain:+$('rr').value,loc:$('hl').value,btype:$('hb').value});
+ count($('rc'),d.capture,' L/yr');$('rt').textContent=fmt(d.storage)+' L';$('rw').innerHTML=`${bd(d.before.level)} · ${d.before.nexus}`;$('rh').innerHTML=`${bd(d.after.level)} · ${d.after.nexus}`;$('rs').textContent=d.rec}catch(e){$('rs').textContent='Calculation unavailable.'}},120)}
+['ra','rr'].forEach(i=>$(i).oninput=rain);$('hb').onchange=rain;$('hl').onchange=()=>{const l=L.find(x=>x.name==$('hl').value);$('rr').value=l.rainfall;rain()};
+$('bchips').innerHTML=['Household','Apartment','School','Office','Community'].map((t,i)=>`<button class="${i?'':'on'}">${t}</button>`).join('');
+$('bchips').onclick=e=>{if(e.target.tagName!='BUTTON')return;[...$('bchips').children].forEach(b=>b.classList.remove('on'));e.target.classList.add('on');bt=e.target.textContent;budget()};
+let ck='water',CD={};async function loadC(){try{CD=await J('/api/challenge');rc()}catch(e){$('lb').innerHTML='<p class="err">Leaderboard unavailable.</p>'}}
+function rc(){const c=CD[ck],m=c.board[0][1],M=['🥇','🥈','🥉','4','5'];$('lb').innerHTML=c.board.map((r,i)=>`<div class="r"><span>${M[i]} ${r[0]}</span><div class="bar"><i style="width:${r[1]/m*100}%"></i></div><b>${fmt(r[1])} ${c.unit=='pts'?'pts':'L'}</b></div>`).join('')}
+document.querySelectorAll('#ctabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');ck=b.dataset.k;if(CD[ck])rc()});
+async function logc(){try{CD=await J('/api/challenge',{challenge:ck,sector:$('csec').value,amount:+$('camt').value});rc();$('cmsg').textContent=`Added ${$('camt').value} ${CD[ck].unit} to ${$('csec').value}. Thank you!`}catch(e){$('cmsg').textContent='Could not save. Check your connection.'}}
+async function brief(){$('bbtn').disabled=true;$('bout').textContent='Generating brief…';try{const d=await J('/api/brief',{loc:cur.name});typeTo($('bout'),d.brief)}catch(e){$('bout').textContent='Brief unavailable. Is the server running?'}$('bbtn').disabled=false}
+function dl(){const t=$('bout').textContent,a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));a.download='aquaheat-brief.txt';a.click()}
+function after(l){confUI(l);const d=l.drivers;$('al1').textContent=d[0].name;$('al2').textContent=d[1].name;$('alp').innerHTML=bd(l.level);
+ $('alt').textContent=`${l.name} may enter a ${l.nexus>=55?'high':'moderate'}-risk period within the next 72 hours.`;$('bell').dataset.n=l.nexus>=55?1:0;$('hl').value=l.name;$('rr').value=l.rainfall;
+ forecast(l);island(l);budget();rain();
+ if(l.nexus>=75&&prof.notify&&window.Notification&&Notification.permission=='granted'&&lastN!=l.name){new Notification('AquaHeat alert',{body:`${l.name}: Nexus ${l.nexus} ${l.level}`});lastN=l.name}}
+const _show=show;show=function(l){if(l){_show(l);after(l)}};
+async function boot(){try{L=await J('/api/locations')}catch(e){$('info').innerHTML='<p class="err">Backend not reachable. Start it with <b>python app.py</b> and open http://127.0.0.1:5000</p>';return}
+ const o=L.map(l=>`<option>${l.name}</option>`).join('');$('pl').innerHTML=o;$('hl').innerHTML=o;if(prof.loc)$('pl').value=prof.loc;if(prof.notify&&window.Notification&&Notification.permission=='granted')setNB('Alerts enabled ✓ (click to turn off)');else prof.notify=false;
+ show(L.find(x=>x.name==prof.loc)||L[0]);loadC();pipeline();if(/[?&]demo=1/.test(location.search))setTimeout(tour,1800)}
+
+function confUI(l){$('whyh').textContent=`Why is the score ${l.level.toLowerCase()}?`;$('cv').textContent=l.conf+'%';$('cbar').style.width=l.conf+'%';$('cr').textContent=`likely range ${l.lo}-${l.hi}`;$('cn').textContent=`Share of ${l.n} ensemble × input-uncertainty scenarios that agree on the ${l.level} level. Measures model consistency, not validated accuracy.`}
+async function pipeline(){try{const d=await J('/api/pipeline');[...$('modechips').children].forEach(b=>b.classList.toggle('on',(b.dataset.m=='1')==d.live));
+ $('st').textContent='· '+d.headline;$('st2').textContent='Current mode: '+d.headline.replace('Data: ','')+'.';
+ $('dsrc').innerHTML=d.sources.map(s=>`<div class="card act"><div class="ic">${s.icon}</div><b>${s.label}</b><div class="mu" style="font-size:13px;margin:4px 0 8px">${s.dataset}</div><span class="tag ${s.tag}">${s.status}</span><p class="mu" style="font-size:12px;margin-top:8px">${s.note}</p></div>`).join('');
+ $('pipe').innerHTML=d.stages.map(s=>`<div class="stage"><span><i class="dot ${s.state}"></i> <b>${s.name}</b></span><span class="mu">${s.detail}</span></div>`).join('<span class="arr">›</span>')}catch(e){}}
+$('modechips').onclick=async e=>{if(e.target.tagName!='BUTTON')return;const live=e.target.dataset.m=='1';$('st').textContent='· '+(live?'Fetching live weather data…':'Switching…');
+ try{await J('/api/mode',{live});L=await J('/api/locations');show(L.find(x=>x.name==cur.name)||L[0])}catch(err){$('st').textContent='· Live data is unavailable right now (no connection). Staying in demo mode.';setTimeout(pipeline,3500);return}pipeline()};
+let tourT=null,tourI=-1,spotEl=null;
+const TOUR=[
+ {t:'AquaHeat AI predicts heat and water stress before it becomes a crisis.',e:'.hero .in',d:4200},
+ {t:'Select a location on the risk map. We start with Gurugram.',e:'#mapbox',f:()=>show(L.find(x=>x.name=='Gurugram')),d:4000},
+ {t:'The Heat-Water Nexus Score combines both risks into one number.',e:'#dash .nexus',d:4200},
+ {t:'Why? Temperature, rainfall, demand and vegetation each add points.',e:'#dash .why',d:4200},
+ {t:'What if it gets 2°C hotter? Watch the risk rise.',e:'#whatif .grid',f:()=>{$('s1').value=0;sim();setTimeout(()=>{$('s1').value=2;sim()},1400)},d:4800},
+ {t:'The AI agent explains the risk and writes an action plan.',e:'#agent .grid',f:()=>ask(),d:7000},
+ {t:'Rainwater harvesting lowers water stress and saves water.',e:'#tools .grid',f:()=>{$('ra').value=120;rain()},d:5000}];
+function spotOff(){clearTimeout(tourT);if(spotEl)spotEl.classList.remove('spot');spotEl=null}
+function tourStop(){spotOff();$('tour').hidden=true;tourI=-1}
+function tourGo(i){spotOff();tourI=i;
+ if(i>=TOUR.length){$('tt').textContent='That is AquaHeat AI: predict heat, protect water, prevent crisis.';$('tn').hidden=true;$('tx').textContent='Close';return}
+ const s=TOUR[i];$('tt').textContent=s.t;$('tn').hidden=false;$('tx').textContent='Skip';$('tdots').innerHTML=TOUR.map((_,k)=>`<i class="${k<=i?'on':''}"></i>`).join('');
+ if(s.f)s.f();const el=document.querySelector(s.e);if(el){el.scrollIntoView({behavior:'smooth',block:i?'center':'start'});setTimeout(()=>{if(tourI==i){el.classList.add('spot');spotEl=el}},600)}
+ tourT=setTimeout(()=>tourGo(i+1),s.d)}
+function tour(){if(!cur)return;$('tour').hidden=false;scrollTo({top:0,behavior:'smooth'});tourGo(0)}
+$('tn').onclick=()=>tourGo(tourI+1);$('tx').onclick=tourStop;
+boot();
+(function(){const c=$('pt'),x=c.getContext('2d');if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;let w,h,P=[];
+ function rs(){w=c.width=innerWidth;h=c.height=innerHeight}rs();addEventListener('resize',rs);
+ for(let i=0;i<60;i++)P.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.4+.4,vx:(Math.random()-.3)*.25,vy:(Math.random()-.5)*.12,c:Math.random()<.6?'39,211,245':'255,138,31'});
+ (function f(){if(!document.hidden){x.clearRect(0,0,w,h);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x>w)p.x=0;if(p.x<0)p.x=w;if(p.y>h)p.y=0;if(p.y<0)p.y=h;x.fillStyle=`rgba(${p.c},.7)`;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()})}requestAnimationFrame(f)})()})();
+</script><script src="/static/stars.js"></script><script src="/static/three.min.js"></script><script src="/static/globe.js"></script></body></html>

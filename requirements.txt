@@ -1,0 +1,7 @@
+flask
+numpy
+scikit-learn
+requests
+python-dotenv
+boto3
+gunicorn

@@ -1,0 +1,23 @@
+# Secrets: never commit these
+.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local runtime data (saved weather snapshots)
+data/
+
+# SageMaker deploy artifacts
+model.joblib
+model.tar.gz
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
