@@ -27,3 +27,4 @@ Enable Bedrock model access in the AWS console, then put AWS credentials in `.en
 
 ## Water-demand data
 Reported Gurugram figures (GMDA/MCG via press) are in `/api/waterref` and on the Methodology page. They are press-reported, not meter data. Live mode anchors the Gurugram-area demand input to them; other locations remain modelled.
+# Aquaheat-AI
