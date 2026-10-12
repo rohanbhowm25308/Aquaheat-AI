@@ -24,3 +24,5 @@ services:
         sync: false
       - key: SAGEMAKER_ENDPOINT
         sync: false
+      - key: OPEN_METEO_API_KEY
+        sync: false

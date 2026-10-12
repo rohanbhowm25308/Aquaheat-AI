@@ -1,4 +1,5 @@
 import os, json, pathlib, threading, requests
+from collections import OrderedDict
 import numpy as np
 from flask import Flask, jsonify, request, render_template
 from sklearn.ensemble import GradientBoostingRegressor
@@ -13,11 +14,17 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 # ---- Prototype ML model trained on SIMULATED environmental-stress data, designed to be replaced by live datasets
 #      (IMD / CGWB / NASA POWER / Open-Meteo). Optional live weather inputs: set USE_LIVE_DATA=1.
 # features: temp anomaly (°C), rainfall deficit (%), demand growth (%), green cover (%)
-FEATS = ["Extreme Temperature", "Low Rainfall", "Water Demand", "Low Vegetation"]
-BASE = np.array([0, 0, 0, 30.0])
+FEATS = ["Extreme Temperature", "Low Rainfall", "Water Demand", "Low Vegetation", "Groundwater Depletion"]
+BASE = np.array([0, 0, 0, 30.0, 30.0])
+def heat_vec(F):
+    F = np.atleast_2d(F); return np.clip(35 + 14*F[:, 0] + .1*(30 - F[:, 3]), 0, 100)
+def scar_parts(f):
+    return {"Rainfall deficit": 30*float(np.clip((f[1] + 20)/80, 0, 1)), "Water demand": 30*float(np.clip((f[2] + 30)/80, 0, 1)), "Groundwater stress": 40*float(np.clip(f[4]/100, 0, 1))}
+def scar_vec(F):
+    F = np.atleast_2d(F); return np.clip(30*np.clip((F[:, 1] + 20)/80, 0, 1) + 30*np.clip((F[:, 2] + 30)/80, 0, 1) + 40*np.clip(F[:, 4]/100, 0, 1), 0, 100)
 rng = np.random.default_rng(7)
-X = np.c_[rng.uniform(0, 6, 3000), rng.uniform(-20, 60, 3000), rng.uniform(-30, 50, 3000), rng.uniform(10, 60, 3000)]
-y = np.clip(15 + 11*X[:,0] + .45*X[:,1] + .35*X[:,2] - .3*(X[:,3]-30), 0, 100) + rng.normal(0, 2, 3000)
+X = np.c_[rng.uniform(0, 6, 3000), rng.uniform(-20, 60, 3000), rng.uniform(-30, 50, 3000), rng.uniform(10, 60, 3000), rng.uniform(0, 100, 3000)]
+y = np.clip(15 + 11*X[:,0] + .45*X[:,1] + .35*X[:,2] - .3*(X[:,3]-30) + .22*(X[:,4]-30), 0, 100) + rng.normal(0, 2, 3000)
 model = GradientBoostingRegressor(random_state=7).fit(X, y)
 # Ensemble of 12 models on bootstrap resamples: used for uncertainty / confidence (disagreement between members)
 ENS = []
@@ -49,49 +56,73 @@ def nexus_value(f):
 
 def level(s): return "LOW" if s < 35 else "MODERATE" if s < 55 else "HIGH" if s < 75 else "CRITICAL"
 
-def score(f):
+def score(f, local=False):
     f = np.array(f, float)
-    nexus = nexus_value(f)
-    drivers = []  # explainable AI: ablate each feature back to baseline
+    nexus = float(np.clip(model.predict([f])[0], 0, 100)) if local else nexus_value(f)
+    drivers = []  # explainable AI: ablate each feature back to its baseline
     for i, n in enumerate(FEATS):
         g = f.copy(); g[i] = BASE[i]
         drivers.append({"name": n, "value": round(nexus - float(model.predict([g])[0]))})
     drivers.sort(key=lambda d: -d["value"])
-    heat = float(np.clip(35 + 14*f[0] + .1*(30-f[3]), 0, 100))
-    water = float(np.clip(15 + .9*f[1] + .4*f[2], 0, 100))
-    return {"nexus": round(nexus), "heat": round(heat), "water": round(water),
-            "demand": round(float(np.clip(40 + 1.1*f[2] + 3*f[0], 0, 100))),
-            "rain": round(float(np.clip(f[1] + 20, 0, 100))),
-            "level": level(nexus), "drivers": drivers}
+    heat = float(heat_vec(f)[0]); sc = float(scar_vec(f)[0])
+    return {"nexus": round(nexus), "heat": round(heat), "water": round(sc), "scarcity": round(sc), "gw": round(float(f[4])),
+            "demand": round(float(np.clip(40 + 1.1*f[2] + 3*f[0], 0, 100))), "rain": round(float(np.clip(f[1] + 20, 0, 100))),
+            "level": level(nexus), "heat_level": level(heat), "scar_level": level(sc),
+            "heat_parts": {"Baseline": 35, "Temperature anomaly": round(14*f[0], 1), "Low green cover": round(.1*(30 - f[3]), 1)},
+            "scar_parts": {k: round(v, 1) for k, v in scar_parts(f).items()}, "drivers": drivers}
 
-LOCS = {  # name: (map x%, y%, temp anomaly, rain deficit, demand growth, green cover)
-    "Gurugram": (46, 62, 3.55, 41.5, 35, 40), "Sector 57": (52, 66, 3.9, 45, 40, 30),
-    "Delhi": (58, 38, 3.6, 38, 33, 25), "Noida": (72, 48, 3.2, 35, 30, 35),
-    "Faridabad": (64, 70, 3.0, 33, 28, 38), "Manesar": (34, 78, 2.2, 28, 22, 55),
-    "Sohna": (52, 84, 2.0, 25, 20, 58), "Dwarka": (36, 44, 2.8, 32, 27, 40)}
+GW_STAGE = {"Gurugram": (326.52, "CGWB 2024 assessment, Gurugram Urban (via Down To Earth)"), "Sector 57": (326.52, "CGWB 2024 assessment, Gurugram Urban (via Down To Earth)"),
+            "Manesar": (212.77, "CGWB district figure, Gurugram (via The Tribune)"), "Sohna": (212.77, "CGWB district figure, Gurugram (via The Tribune)"),
+            "Faridabad": (180.89, "CGWB district figure, Faridabad (via The Tribune)")}
+def gwi(n): return round(min(100, GW_STAGE[n][0]/4)) if n in GW_STAGE else 55
+GW_REF = {"facts": ["Gurugram Urban: stage of groundwater extraction 326.52% in the CGWB 2024 assessment, meaning extraction is more than three times the recharge.",
+                    "Gurugram district: 43,262.85 ham extracted against 20,333.39 ham extractable (CGWB reply to the NGT, November 2025).",
+                    "CGWB district figures reported by The Tribune: Gurugram 212.77%, Faridabad 180.89%, Haryana overall about 136%.",
+                    "Reported depth to water: about 6.6 m in 1974 and about 28 m in recent years, an average fall of roughly 0.5 m a year; some areas fall 1 to 3 m a year."],
+          "sources": [{"name": "Down To Earth: CGWB reply to NGT on Gurugram (Nov 2025)", "url": "https://www.downtoearth.org.in/amp/story/environment/daily-court-digest-major-environment-orders-november-14-2025"},
+                      {"name": "The Tribune: CGWB district-wise extraction in Haryana", "url": "https://www.tribuneindia.com/news/haryana/haryanas-60-48-groundwater-over-exploited-kurukshetra-worst-jhajjar-best-says-report"},
+                      {"name": "Haryana Water Resources Atlas 2025", "url": "https://hwra.org.in/Atlas2025/files/basic-html/page83.html"},
+                      {"name": "IamRenew: NGT order on illegal extraction in Gurugram", "url": "https://www.iamrenew.com/environment/ngt-orders-cpcb-take-action-over-illegal-groundwater-extraction-in-gurugram/"},
+                      {"name": "Hindustan Times: Gurugram Environment Conclave (2017)", "url": "https://www.pressreader.com/india/hindustan-times-jalandhar/20170602/281672549905696"}],
+          "trend": [{"year": 1974, "depth_m": 6.6}, {"year": 2018, "depth_m": 28.0}],
+          "method": "Groundwater stress index = CGWB stage of extraction divided by 4, capped at 100 (100% extraction scores 25; 326.5% scores 82). Locations with no loaded CGWB figure use an estimate of 55. Press-reported depth points are approximate and not a time series."}
+
+LOCS = {  # name: (map x%, y%, temp anomaly C, rain deficit %, demand growth %, green cover %, groundwater stress index)
+    "Gurugram": (46, 62, 3.0, 41, 33, 40, gwi("Gurugram")), "Sector 57": (52, 66, 3.4, 40, 33, 30, gwi("Sector 57")), "Delhi": (58, 38, 3.6, 38, 33, 25, gwi("Delhi")),
+    "Noida": (72, 48, 3.2, 35, 30, 35, gwi("Noida")), "Faridabad": (64, 70, 3.0, 33, 28, 38, gwi("Faridabad")), "Manesar": (34, 78, 2.2, 28, 22, 55, gwi("Manesar")),
+    "Sohna": (52, 84, 2.0, 25, 20, 58, gwi("Sohna")), "Dwarka": (36, 44, 2.8, 32, 27, 40, gwi("Dwarka"))}
 
 @app.route("/")
 def home(): return app.send_static_file("index.html")
 
 @app.route("/api/locations")
 def locations():
-    return jsonify([{"name": n, "x": v[0], "y": v[1], "inputs": inputs(n), "rainfall": RAIN[n], **SC[n]} for n, v in LOCS.items()])
+    return jsonify([{"name": n, "x": v[0], "y": v[1], "inputs": inputs(n), "rainfall": RAIN[n], "lat": COORD[n][0], "lon": COORD[n][1], **SC[n]} for n, v in LOCS.items()])
 
 @app.route("/api/simulate", methods=["POST"])
 def simulate():
-    d = request.json; b = inputs(loc_of(d.get("loc"))[0])
-    cur = score(b)
-    sim_in = [b[0] + d["temp"], b[1] - d["rain"], b[2] + d["cons"], b[3]]; sim = score(sim_in); u = uncertainty(sim_in)   # d["rain"] = % CHANGE in rainfall (negative = drier = higher deficit)
-    t, r, c = d["temp"], d["rain"], d["cons"]; delta = sim["nexus"] - cur["nexus"]
-    parts = ([f"a +{t:g}°C temperature rise"] if t else []) + ([f"{abs(r):g}% {'less' if r < 0 else 'more'} rainfall"] if r else []) + ([f"{abs(c):g}% {'higher' if c > 0 else 'lower'} water consumption"] if c else [])
-    what = (", ".join(parts[:-1]) + " and " + parts[-1] if len(parts) > 1 else parts[0]) if parts else None
-    if not what: insight = "No change from the current scenario."
-    elif delta > 0: insight = f"{what[0].upper()+what[1:]} could raise heat-water stress from {cur['nexus']} to {sim['nexus']} (+{delta}, {sim['level']}). Largest driver: {sim['drivers'][0]['name'].lower()}."
-    elif delta < 0: insight = f"{what[0].upper()+what[1:]} could lower heat-water stress from {cur['nexus']} to {sim['nexus']} ({delta}, {sim['level']})."
-    else: insight = f"{what[0].upper()+what[1:]} leaves heat-water stress at about {cur['nexus']}."
-    mit = score([sim_in[0], sim_in[1], sim_in[2] - 20, sim_in[3]])["nexus"]
-    mitigation = (f"Mitigation: cutting water consumption by a further 20% would bring the simulated risk from {sim['nexus']} to {mit}." if mit < sim["nexus"] else "Mitigation: water-use cuts alone would not lower this scenario; pair them with rainwater harvesting and cooling measures.")
-    return jsonify({"current": cur["nexus"], "simulated": sim["nexus"], "level": sim["level"], "drivers": sim["drivers"], "conf": u["conf"], "lo": u["lo"], "hi": u["hi"], "insight": insight, "mitigation": mitigation})
+    d = request.json or {}; n = loc_of(d.get("loc"))[0]
+    try: v = [float(d.get(k, 0)) for k in ("temp", "rain", "cons", "gw")]
+    except (TypeError, ValueError): v = [0.0, 0.0, 0.0, 0.0]
+    t, r, c, g = [float(x) for x in np.clip(v, [-5, -60, -40, -30], [6, 40, 60, 40])]   # r = % CHANGE in rainfall (negative = drier)
+    b = inputs(n); cur = risk(n, b); f2 = clipf([b[0] + t, b[1] - r, b[2] + c, b[3], b[4] + g]); sim = risk(n, f2, r); u = uncertainty(f2, n, r)
+    rng_ = {"nexus": (u["lo"], u["hi"]), "heat": (u["heat_lo"], u["heat_hi"]), "flood": (u["flood_lo"], u["flood_hi"]), "scarcity": (u["scar_lo"], u["scar_hi"])}
+    scores = {k: {"cur": cur[k], "sim": sim[k], "cur_level": level(cur[k]), "sim_level": level(sim[k]), "lo": rng_[k][0], "hi": rng_[k][1]} for k in rng_}
+    parts = ([f"a +{t:g}°C temperature rise"] if t else []) + ([f"{abs(r):g}% {'less' if r < 0 else 'more'} rainfall"] if r else []) + ([f"{abs(c):g}% {'higher' if c > 0 else 'lower'} water consumption"] if c else []) + ([f"groundwater stress {'up' if g > 0 else 'down'} {abs(g):g} points"] if g else [])
+    delta = sim["nexus"] - cur["nexus"]
+    if not parts: insight = "No change from the current scenario."
+    else:
+        what = (", ".join(parts[:-1]) + " and " + parts[-1]) if len(parts) > 1 else parts[0]
+        insight = (f"{what[0].upper() + what[1:]} would move Nexus risk from {cur['nexus']} to {sim['nexus']} ({delta:+d}, {sim['level']}); flood risk {cur['flood']} to {sim['flood']}, "
+                   f"water scarcity {cur['scarcity']} to {sim['scarcity']}, heat {cur['heat']} to {sim['heat']}. Largest driver: {sim['drivers'][0]['name'].lower()}.")
+    mit = risk(n, [f2[0], f2[1], f2[2] - 20, f2[3], f2[4]], r)["nexus"]
+    mitigation = (f"Mitigation: cutting water consumption by a further 20% would bring the simulated Nexus risk from {sim['nexus']} to {mit}." if mit < sim["nexus"] else "Mitigation: water-use cuts alone would not lower this scenario; pair them with rainwater harvesting, drainage and cooling measures.")
+    assumptions = ["Rainfall change shifts the 14-day rainfall deficit one-for-one and scales the 45 mm/day design storm (or the live forecast storm) by the same percent.",
+                   "Groundwater change is in index points (index = CGWB stage of extraction divided by 4).",
+                   "Flood risk is a rule-based runoff-versus-drainage index; imperviousness and drainage are modelled, not surveyed.",
+                   "Nexus risk is the ML model output; ranges come from 240 ensemble and input-uncertainty draws (flood: 60 draws)."]
+    return jsonify({"current": cur["nexus"], "simulated": sim["nexus"], "level": sim["level"], "drivers": sim["drivers"], "conf": u["conf"], "lo": u["lo"], "hi": u["hi"],
+                    "insight": insight, "mitigation": mitigation, "scores": scores, "assumptions": assumptions, "flood_parts": sim["flood_parts"]})
 
 def _bedrock(system, user):
     import boto3
@@ -151,7 +182,7 @@ def call_llm(system, user):
 SYS = ("You are AquaHeat Intelligence, an environmental decision-support agent. Use ONLY the model output provided; never invent numbers. "
        'Reply with JSON only: {"assessment": "2-3 sentence risk assessment naming the top drivers", "actions": ["4 short, specific actions"]}. '
        "If the question names an audience (citizens, buildings, authorities) tailor the actions to it.")
-DRV = {"Extreme Temperature": ("🔥", "Temperature anomaly"), "Low Rainfall": ("🌧️", "Rainfall deficit"), "Water Demand": ("💧", "Water demand"), "Low Vegetation": ("🌿", "Vegetation stress")}
+DRV = {"Extreme Temperature": ("🔥", "Temperature anomaly"), "Low Rainfall": ("🌧️", "Rainfall deficit"), "Water Demand": ("💧", "Water demand"), "Low Vegetation": ("🌿", "Vegetation stress"), "Groundwater Depletion": ("🕳️", "Groundwater stress")}
 qual = lambda v: "High" if v >= 20 else "Moderate" if v >= 8 else "Low"
 ACTIONS = {"citizens": ["Reduce non-essential water use (gardens, car washing).", "Store drinking water for 72 hours.", "Avoid outdoor activity in the afternoon heat.", "Check on elderly neighbours and children."],
            "buildings": ["Optimize cooling schedules and set-points.", "Fix leaks and add greywater reuse.", "Install rainwater harvesting storage.", "Add shading and reflective roofing."],
@@ -160,12 +191,12 @@ ACTIONS = {"citizens": ["Reduce non-essential water use (gardens, car washing)."
 
 @app.route("/api/agent", methods=["POST"])
 def agent():
-    d = request.json or {}; name = d.get("loc", "Gurugram"); name = name if name in LOCS else "Gurugram"
+    d = request.json or {}; name = loc_of(d.get("loc"))[0]
     q = str(d.get("q") or "Why is the risk high?")[:300]; s = SC[name]
     drivers = [{"emoji": DRV[x["name"]][0], "label": DRV[x["name"]][1], "level": qual(x["value"]), "value": x["value"]} for x in s["drivers"]]
     ctx = json.dumps({"location": name, "nexus": s["nexus"], "level": s["level"], "confidence_pct": s["conf"], "likely_range": [s["lo"], s["hi"]],
-                      "drivers": s["drivers"], "heat": s["heat"], "water_stress": s["water"], "demand": s["demand"],
-                      "data_mode": "live weather inputs" if live_on() else "simulated demo scenario"})
+                      "drivers": s["drivers"], "heat": s["heat"], "flood": s["flood"], "water_scarcity": s["scarcity"], "groundwater_index": s["gw"], "demand": s["demand"],
+                      "data_mode": ("searched location: Open-Meteo analysis and forecast, model estimates" if name in GEO else "live weather inputs" if live_on() else "simulated demo scenario")})
     text, prov = call_llm(SYS, f"Model output: {ctx}\nQuestion: {q}"); out = None
     if text:
         try:
@@ -178,7 +209,7 @@ def agent():
         aud = "citizens" if ("citizen" in ql or "household" in ql) else "buildings" if "building" in ql else "authorities" if ("authorit" in ql or "municip" in ql or "government" in ql) else "general"
         top = [x["name"].lower() for x in s["drivers"][:2]]
         out = {"assessment": f"{name}'s Nexus risk is {s['level'].lower()} ({s['nexus']}/100), driven mainly by {top[0]} and {top[1]}. Model confidence is {s['conf']}%.", "actions": ACTIONS[aud]}
-    return jsonify({"assessment": out["assessment"], "actions": [str(x) for x in out["actions"]][:5], "drivers": drivers,
+    return jsonify({"assessment": out["assessment"], "actions": ([z["title"] for z in plan_for(name) if z["audience"] == "residents"][:2] + [z["title"] for z in plan_for(name) if z["audience"] == "authorities"][:2]) or [str(x) for x in out["actions"]][:4], "drivers": drivers,
                     "level": s["level"], "nexus": s["nexus"], "conf": s["conf"], "provider": prov})
 
 
@@ -211,28 +242,76 @@ MODE = {"live": os.getenv("USE_LIVE_DATA", "0") == "1"}
 PROC, META = {}, {"updated": None, "raw_ref": None, "proc_ref": None}
 DATA_DIR = pathlib.Path(__file__).parent / "data"
 S3_BUCKET = os.getenv("S3_BUCKET", "")
-SD_SIM, SD_LIVE = np.array([.8, 8, 6, 5]), np.array([.5, 6, 6, 5])   # assumed input uncertainty (temp C, rain pts, demand pts, green pts)
+SD_SIM, SD_LIVE = np.array([.8, 8, 6, 5, 8]), np.array([.5, 6, 6, 5, 8])   # assumed input uncertainty (temp C, rain pts, demand pts, green pts)
+
+GEO = OrderedDict()   # dynamically searched locations (label -> data and model inputs), filled by geo.py
+
+class UnknownLocation(Exception): pass
 
 def live_on(): return MODE["live"] and bool(PROC)
 
 def inputs(n):
+    if n in GEO: return list(GEO[n]["inputs"])
     b = list(LOCS[n][2:])
     if live_on() and n in PROC:
         p = PROC[n]; b[0], b[1] = p["anomaly"], p["deficit"]; b[3] = float(np.clip(b[3]*p["veg_idx"], 5, 70))
         if p.get("demand_growth") is not None: b[2] = p["demand_growth"]
     return b
 
-def uncertainty(f):
+def clipf(f):
+    return np.clip(np.array(f, float), [0, -20, -30, 10, 0], [6, 60, 50, 60, 100])
+
+STORM_DESIGN = 45.0   # mm/day design storm used in demo mode
+def storm_mm(n):
+    if n in GEO: return GEO[n]["storm"]
+    if live_on() and n in PROC and PROC[n].get("storm_mm") is not None: return max(PROC[n]["storm_mm"], 5.0)
+    return STORM_DESIGN
+
+def flood_calc(n, rain_pct=0.0, reduce=0.0, drain=0.0, imp=0.0, storm=None):
+    """Rule-based flood/waterlogging index: runoff from a storm vs drainage capacity (both modelled)."""
+    i = float(np.clip(imp_of(n) + imp, .05, .98)); s = (storm_mm(n) if storm is None else storm)*(1 + rain_pct/100)
+    runoff = s*(.15 + .75*i)*(1 - reduce); cap = 70*(1 - .45*i)*(1 + drain); r = max(runoff/cap, 0)
+    return float(np.clip(100*r**1.3, 0, 100)), {"Storm rainfall (mm/day)": round(s, 1), "Impervious cover (%)": round(i*100), "Runoff (mm)": round(runoff, 1), "Drainage capacity (mm/day)": round(cap, 1)}
+
+def indices(n, f, rain_pct=0.0, **kw):
+    fl, fp = flood_calc(n, rain_pct, **kw)
+    return {"flood": int(round(fl)), "flood_level": level(fl), "flood_parts": fp}
+
+def risk(n, f, rain_pct=0.0, local=False, **kw):
+    return {**score(f, local), **indices(n, f, rain_pct, **kw)}
+
+def imp_of(n): return DENS[n] if n in DENS else GEO[n]["imp"]
+def rain_norm(n): return RAIN[n] if n in RAIN else GEO[n]["rain_annual"]
+def sd_for(n):
+    if n in GEO:
+        g = GEO[n]; sd = SD_LIVE.copy()
+        if not g["gw_known"]: sd[4] = 25
+        if not g["demand_known"]: sd[2] = 10
+        sd[3] = 8; return sd
+    return SD_LIVE if live_on() else SD_SIM
+def loc_ok(n): return n in LOCS or n in GEO
+
+def uncertainty(f, n=None, rp=0.0):
     """Monte Carlo over input uncertainty x 12-model ensemble. Confidence = share of draws that keep the same risk level."""
-    f = np.array(f, float); sd = SD_LIVE if live_on() else SD_SIM
-    P = f + np.random.default_rng(1).normal(0, 1, (20, 4))*sd
-    d = np.clip(np.concatenate([m.predict(P) for m in ENS]), 0, 100); bins = [35, 55, 75]
-    c = int(np.digitize(model.predict([f])[0], bins))
-    return {"conf": int(round(float((np.digitize(d, bins) == c).mean())*100)), "lo": int(round(np.percentile(d, 5))), "hi": int(round(np.percentile(d, 95))), "n": int(len(d))}
+    f = np.array(f, float); sd = sd_for(n)
+    P = clipf(f + np.random.default_rng(1).normal(0, 1, (20, 5))*sd)
+    d = np.clip(np.concatenate([mm.predict(P) for mm in ENS]), 0, 100); bins = [35, 55, 75]
+    c = int(np.digitize(model.predict([f])[0], bins)); pc = lambda v, q: int(round(np.percentile(v, q)))
+    out = {"conf": int(round(float((np.digitize(d, bins) == c).mean())*100)), "lo": pc(d, 5), "hi": pc(d, 95), "n": int(len(d)),
+           "scar_lo": pc(scar_vec(P), 5), "scar_hi": pc(scar_vec(P), 95), "heat_lo": pc(heat_vec(P), 5), "heat_hi": pc(heat_vec(P), 95)}
+    if n:
+        r2 = np.random.default_rng(2)
+        fv = [flood_calc(n, rp, storm=storm_mm(n)*r2.uniform(.8, 1.2), imp=float(r2.normal(0, .05)), drain=float(r2.normal(0, .12)))[0] for _ in range(60)]
+        out.update(flood_lo=pc(fv, 5), flood_hi=pc(fv, 95))
+    return out
+
+def future7(f):
+    """7-day projected Nexus using the same scenario drift as the 30-day projection."""
+    return int(round(float(np.clip(model.predict([clipf([f[0] + .05*7 + .4*np.sin(7/2.5), f[1] + .25*7, f[2] + .3*7 + 2*np.sin(7/4), f[3], f[4]])])[0], 0, 100))))
 
 def rebuild():
     for n in LOCS:
-        f = inputs(n); SC[n] = {**score(f), **uncertainty(f)}
+        f = inputs(n); SC[n] = {**score(f), **indices(n, f), **uncertainty(f, n), "future7": future7(f)}
 SC = {}; rebuild()   # cached: instant responses
 
 # ---- data layer: fetch -> S3 (or local mirror) -> process -> model
@@ -279,7 +358,8 @@ def process(n, r):
     return {"anomaly": round(anomaly, 2), "deficit": round(deficit, 1), "tmax_next7": round(float(np.mean(nxt)), 1), "rain_14d_mm": round(float(sum(past)), 1),
             "soil_moisture": round(float(np.mean(sm)), 3) if sm else None, "et0_mm_day": round(float(np.mean(et)), 2) if et else None,
             "veg_idx": round(float(np.clip(np.mean(sm)/0.25, .6, 1.2)), 2) if sm else 1.0,
-            "demand_growth": demand_ref(float(np.mean(nxt))) if n in GURUGRAM_AREA else None}
+            "demand_growth": demand_ref(float(np.mean(nxt))) if n in GURUGRAM_AREA else None,
+            "storm_mm": round(float(max([p for p in d["precipitation_sum"][14:] if p is not None] or [0])), 1)}
 
 def refresh_once():
     from concurrent.futures import ThreadPoolExecutor
@@ -329,7 +409,8 @@ def model_info():
         "features": [{"name": "Temperature anomaly", "desc": "Degrees C above the seasonal baseline", "range": "0 to 6", "status": st(1)},
                      {"name": "Rainfall deficit", "desc": "% below normal rainfall", "range": "-20 to 60", "status": st(1)},
                      {"name": "Water-demand growth", "desc": "% by which demand exceeds the normal requirement", "range": "-30 to 50", "status": "Reported data (Gurugram area), modelled elsewhere" if live else "Estimated / modelled"},
-                     {"name": "Green cover", "desc": "% vegetated area" + (" (adjusted by soil-moisture proxy)" if live else ""), "range": "10 to 60", "status": "Modelled estimate" + (" + live proxy" if live else "")}],
+                     {"name": "Green cover", "desc": "% vegetated area" + (" (adjusted by soil-moisture proxy)" if live else ""), "range": "10 to 60", "status": "Modelled estimate" + (" + live proxy" if live else "")},
+                     {"name": "Groundwater stress", "desc": "Index = CGWB stage of extraction / 4 (0-100)", "range": "0 to 100", "status": "Reported (CGWB 2024) for Gurugram area and Faridabad; estimated elsewhere"}],
         "levels": {"LOW": "below 35", "MODERATE": "35 to 54", "HIGH": "55 to 74", "CRITICAL": "75 and above"},
         "training": {"samples": int(len(X)), "source": "Simulated environmental-stress data (rule-based generator plus noise)", "holdout": HOLD},
         "engine": "Amazon SageMaker real-time endpoint" if (SM_ENDPOINT and ENGINE["sm_ok"]) else "Local model in the Flask process",
@@ -352,7 +433,9 @@ def pipeline():
             "status": "LIVE PROXY" if live else "PROTOTYPE", "tag": "live" if live else "proto", "note": "Not NDVI. Satellite NDVI (e.g. Sentinel-2) is the planned upgrade."},
            {"icon": "💧", "label": "Water demand", "dataset": "Reported Gurugram supply and demand figures (GMDA / MCG, via press); modelled for other NCR locations",
             "status": "REPORTED DATA (GURUGRAM)" if anch else "PROTOTYPE", "tag": "live" if anch else "proto",
-            "note": "Anchored to 640 MLD requirement vs 700 MLD reported peak. Not meter data; see Methodology for sources." if anch else "Modelled in demo mode. Reported Gurugram figures are used in Live mode (see Methodology)."}]
+            "note": "Anchored to 640 MLD requirement vs 700 MLD reported peak. Not meter data; see Methodology for sources." if anch else "Modelled in demo mode. Reported Gurugram figures are used in Live mode (see Methodology)."},
+           {"icon": "🕳️", "label": "Groundwater", "dataset": "CGWB 2024 stage of groundwater extraction (Gurugram, Faridabad); estimated elsewhere", "status": "REPORTED (CGWB)", "tag": "ref", "note": "Index = stage of extraction divided by 4. No live well-level feed is loaded."},
+           {"icon": "🌊", "label": "Flood / drainage", "dataset": "Design-storm runoff vs drainage capacity (live 7-day rain forecast in Live mode)", "status": "RULE-BASED", "tag": "proto", "note": "Imperviousness and drainage are modelled, not surveyed. No observed flood data."}]
     s3 = "active" if ref.startswith("s3://") else "fallback" if ref else "idle"
     sm = "active" if (SM_ENDPOINT and ENGINE["sm_ok"]) else "fallback"
     stages = [{"name": "Environmental data", "state": "active" if live else "fallback", "detail": "Open-Meteo, 8 locations" if live else "Simulated demo scenario"},
@@ -366,15 +449,22 @@ def pipeline():
     return jsonify({"live": live, "headline": headline, "sources": src, "stages": stages})
 
 def loc_of(n):
-    n = n if n in LOCS else "Gurugram"
-    return n, LOCS[n]
+    """Resolve a base or searched location. Unknown names raise (404) instead of silently falling back to another place."""
+    if n is None: n = "Gurugram"
+    if n in LOCS: return n, LOCS[n]
+    if n in GEO: return n, (50, 50, *GEO[n]["inputs"])
+    raise UnknownLocation(n)
+
+@app.errorhandler(UnknownLocation)
+def _unknown_location(e):
+    return jsonify({"error": "unknown_location", "message": "This location is no longer loaded on the server. Search for it again."}), 404
 
 @app.route("/api/forecast")
 def forecast():
     n, v = loc_of(request.args.get("loc")); b = np.array(inputs(n), float); d = np.arange(31)
-    F = np.c_[b[0] + .05*d + .4*np.sin(d/2.5), b[1] + .25*d, b[2] + .3*d + 2*np.sin(d/4), np.full(31, b[3])]
+    F = np.c_[b[0] + .05*d + .4*np.sin(d/2.5), b[1] + .25*d, b[2] + .3*d + 2*np.sin(d/4), np.full(31, b[3]), np.full(31, b[4])]
     nx = np.clip(model.predict(F), 0, 100)
-    heat = np.clip(35 + 14*F[:, 0] + .1*(30-F[:, 3]), 0, 100); water = np.clip(15 + .9*F[:, 1] + .4*F[:, 2], 0, 100)
+    heat = heat_vec(F); water = scar_vec(F)
     return jsonify({"nexus": nx.round().tolist(), "heat": heat.round().tolist(), "water": water.round().tolist()})
 
 BUD = {"Household": (1, [.31, .14, .28, .27]), "Apartment": (2.6, [.38, .18, .10, .34]), "School": (9, [.45, .12, .18, .25]),
@@ -399,21 +489,33 @@ DEM = {"House": 1, "Apartment": 2.6, "School": 9, "Office": 6, "Factory": 20}
 def harvest():
     d = request.json or {}; n, v = loc_of(d.get("loc")); bt = d.get("btype") if d.get("btype") in COEF else "House"
     try:
-        roof = float(np.clip(float(d.get("roof", 120)), 10, 20000)); rain = float(np.clip(float(d.get("rain", RAIN[n])), 100, 3000))
+        roof = float(np.clip(float(d.get("roof", 120)), 10, 20000)); rain = float(np.clip(float(d.get("rain", rain_norm(n))), 100, 3000)); adopt = float(np.clip(float(d.get("adopt", 30)), 0, 100))
     except (TypeError, ValueError):
-        roof, rain = 120.0, float(RAIN[n])
+        roof, rain, adopt = 120.0, float(rain_norm(n)), 30.0
     cap = int(round(roof*rain*COEF[bt])); store = max(500, int(np.ceil(cap/365*30/500))*500)
-    cover = min(1.0, cap/(510*365*DEM[bt])); f = inputs(n); g = [f[0], f[1]-cover*30, f[2]-cover*60, f[3]]
+    cover = min(1.0, cap/(510*365*DEM[bt])); f = inputs(n); g = clipf([f[0], f[1] - cover*30, f[2] - cover*60, f[3], f[4]])
     a, b = score(f), score(g)
-    return jsonify({"capture": cap, "storage": store, "cover": round(cover*100), "before": {"nexus": a["nexus"], "level": a["level"]},
-        "after": {"nexus": b["nexus"], "level": b["level"]},
+    storm = storm_mm(n); roof_l = roof*storm*COEF[bt]; got = min(store, roof_l); cap_pct = round(100*got/max(roof_l, 1))
+    reduce = .35*(adopt/100)*(cap_pct/100); fl0 = flood_calc(n, 0)[0]; fl1 = flood_calc(n, 0, reduce=reduce)[0]
+    sug = []
+    if store < roof_l: sug.append(f"A {store:,} L tank holds only {cap_pct}% of the roof runoff from a {storm:g} mm storm ({roof_l:,.0f} L). Enlarge storage or add an overflow to a recharge pit.")
+    else: sug.append(f"A {store:,} L tank can hold the full roof runoff from a {storm:g} mm storm ({roof_l:,.0f} L).")
+    if fl0 >= 55: sug.append("Flood risk is high here: clear drains before the rains and add permeable paving or a detention tank.")
+    if f[4] >= 60: sug.append(f"Groundwater stress is {round(f[4])}/100: send tank overflow to a recharge pit to help recharge.")
+    if cover < .3: sug.append(f"Harvesting offsets about {round(cover*100)}% of annual demand; pair it with leak repair and greywater reuse.")
+    assumptions = [f"Runoff coefficient for a {bt.lower()}: {COEF[bt]}. Annual capture = roof area x rainfall x coefficient.", f"Design storm: {storm:g} mm/day. Storage target: about 30 days of captured supply.",
+                   "Roofs are assumed to be 35% of paved area. Neighbourhood runoff reduction = 35% x adoption x share of the design-storm roof runoff captured.",
+                   f"Annual demand baseline: 510 L/day x {DEM[bt]} for a {bt.lower()}."]
+    return jsonify({"capture": cap, "storage": store, "cover": round(cover*100), "before": {"nexus": a["nexus"], "level": a["level"]}, "after": {"nexus": b["nexus"], "level": b["level"]},
+        "storm_mm": storm, "roof_runoff_l": round(roof_l), "storm_capture_pct": cap_pct, "adopt": round(adopt), "runoff_reduction_pct": round(reduce*100, 1),
+        "flood_before": round(fl0), "flood_after": round(fl1), "flood_before_level": level(fl0), "flood_after_level": level(fl1), "suggestions": sug, "assumptions": assumptions,
         "rec": f"Install a {store:,} L tank (about 30 days of stored supply). It can offset {round(cover*100)}% of this {bt.lower()}'s annual demand."})
 
 @app.route("/api/heatisland")
 def heat_island():
     n, v = loc_of(request.args.get("loc")); r = np.random.default_rng(sum(map(ord, n)))
     R, C = 9, 14; yy, xx = np.mgrid[0:R, 0:C]; cx, cy = r.uniform(3, 10), r.uniform(2, 6)
-    dens = np.clip(DENS[n]*np.exp(-(((xx-cx)/5)**2 + ((yy-cy)/3)**2)) + .15 + r.normal(0, .05, (R, C)), 0, 1)
+    dens = np.clip(imp_of(n)*np.exp(-(((xx-cx)/5)**2 + ((yy-cy)/3)**2)) + .15 + r.normal(0, .05, (R, C)), 0, 1)
     veg = np.clip(v[5]/100*1.5*(1-dens*.8) + r.normal(0, .04, (R, C)), 0, 1)
     t = 33 + inputs(n)[0]*1.1 + 5*dens - 4*veg + r.normal(0, .3, (R, C))
     z = np.where((t > np.percentile(t, 70)) & (veg < .3) & (dens > .5), "heat", np.where(veg > .45, "green", np.where(dens > .55, "dense", "mixed")))
@@ -449,6 +551,10 @@ def brief():
                 f"{top[0]} and {top[1].lower()} are the primary risk factors.\n\nTop 3 concerns\n- {top[0]}\n- {top[1]}\n- {top[2]}\n\n"
                 "Recommended interventions\n- Prioritize high-risk zones\n- Promote water conservation\n- Increase cooling infrastructure\n- Monitor water availability")
     return jsonify({"brief": text, "provider": prov})
+
+import sys, extras, geo
+extras.init(sys.modules[__name__])
+geo.init(sys.modules[__name__])
 
 _bg = {"on": False}
 def start_background():

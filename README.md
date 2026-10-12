@@ -27,4 +27,21 @@ Enable Bedrock model access in the AWS console, then put AWS credentials in `.en
 
 ## Water-demand data
 Reported Gurugram figures (GMDA/MCG via press) are in `/api/waterref` and on the Methodology page. They are press-reported, not meter data. Live mode anchors the Gurugram-area demand input to them; other locations remain modelled.
-# Aquaheat-AI
+
+## Eight feature modules
+City Survival Twin (`/api/twin`), Heat-Water Nexus with separate heat, flood and scarcity scores, AI Resilience Action Plan (`/api/actions`), What-If simulator (`/api/simulate`), Rainwater and flood-to-resource optimizer (`/api/harvest`), Water and leak intelligence (`/api/water`, `/api/anomaly`), Community alerts and reports (`/api/alerts`, `/api/reports`), Trust and explainability center (`/api/trust`). New endpoints live in `extras.py`.
+- The model now has 5 inputs (groundwater stress added). If you deployed a SageMaker endpoint earlier, redeploy it with `python aws/deploy.py` so it matches.
+- Community reports are saved to `data/reports.json` (temporary storage on Render).
+
+## Smart location search
+Search any place (Open-Meteo geocoding), then every dashboard section uses that place: `GET /api/locations/search?q=`, `GET /api/location-data?lat=&lon=`, `POST /api/location-risk`. Code: `geo.py`, `static/geo.js`.
+- Data: Open-Meteo forecast (current, last 14 days, next 7 days), archive (10-year normals), flood (river discharge); Nominatim for "Use my location" labels. No API key is needed. `OPEN_METEO_API_KEY` (optional) stays server-side.
+- Searched locations are held in server memory (up to 40, oldest evicted). If the server restarts, the page asks you to search again (404 `unknown_location`); it never falls back to another city.
+- Model inputs are checked against the training ranges and clipped values are flagged. Groundwater is real only near the CGWB reference areas; elsewhere it is reported as unavailable and a neutral value is used with wider uncertainty.
+- Tests: `python tests/test_geo.py` (simulated providers). Try the UI without internet: `python tests/serve_fake.py` then open http://127.0.0.1:5055.
+
+## How the page behaves
+1. On load nothing is selected: only the search bar, a "Demo data" button and a welcome card are shown.
+2. **Search a place** (any city, district or locality): every section shows that place with real forecast data. Demo areas are not mixed in. Places searched in the same session are compared in the City Twin and shown on the map.
+3. **Demo data**: pick Gurugram, Sector 57, Delhi, Noida, Faridabad, Manesar, Sohna or Dwarka. These are simulated Delhi NCR scenarios (the Demo/Live toggle appears only here).
+4. Clicking a nav link before choosing either shows a hint instead of an empty section. "Use demo scenario" returns to demo data.

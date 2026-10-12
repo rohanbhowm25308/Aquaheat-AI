@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AquaHeat AI — Predict Heat. Protect Water. Prevent Crisis.</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 <style>
 :root{--bg:#050a14;--glass:rgba(10,20,38,.62);--line:rgba(120,190,255,.16);--cy:#27d3f5;--or:#ff8a1f;--tx:#eaf2ff;--mu:#8aa0bd}
 *{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
@@ -92,9 +93,57 @@ section{z-index:1;isolation:isolate}
 .ai ol{margin-left:20px;color:#cfe0f5}#arest{transition:opacity .6s}footer a{color:var(--cy);text-decoration:none;margin:0 10px}
 @media(max-width:860px){#why{grid-template-columns:1fr}}
 #sf{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
-</style></head><body>
-<nav><b>AQUA<i>HEAT</i> AI</b><a href="#dash">Dashboard</a><a href="#map">Risk Map</a><a href="#radar">Predictions</a><a href="#whatif">What-If</a><a href="#agent">AI Agent</a><a href="#impact">Impact</a><a href="#how">Data</a><a href="/methodology">Methodology</a><a href="#alert" class="bell" id="bell" data-n="1" title="Alerts">🔔</a>
-<div class="pf"><button onclick="$('pfm').classList.toggle('open')" title="Profile">AH</button><div class="card pm" id="pfm"><b>Guest analyst</b><label>Default location</label><select id="pl" onchange="saveP()"></select><label>Alerts</label><button class="btn nb" style="margin:0" id="nbtn2" onclick="notif()">Enable browser alerts</button></div></div></nav><div id="bg"></div><canvas id="sf"></canvas><canvas id="g3" aria-label="Interactive 3D globe"></canvas><canvas id="pt"></canvas>
+
+#dash .grid.subs{grid-template-columns:repeat(3,1fr)}.met{grid-template-columns:repeat(3,1fr)}.x{overflow-x:auto}
+.twc{position:relative}#twc{width:100%;height:auto;display:block;border-radius:12px;cursor:pointer;background:#050a14}
+#twtip{position:absolute;display:none;pointer-events:none;background:#07121fee;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;z-index:3;min-width:210px}
+.twcmp{display:flex;gap:12px;align-items:center;margin-top:10px;font-size:13px;color:var(--mu)}.twcmp input{flex:1}
+.pr{display:flex;gap:12px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer}.pr:hover{background:#27d3f510}.pr>b{width:20px;text-align:center;color:var(--mu)}
+.up{color:#ff6b6b}.dn{color:#3ddc84}
+table.tt,table.ptb{width:100%;border-collapse:collapse;font-size:14px}.tt td,.tt th,.ptb td,.ptb th{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}.tt th,.ptb th{color:var(--mu);font-weight:600;font-size:12px}
+.wtab{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}.wtab td{padding:7px 6px;border-bottom:1px solid var(--line)}
+.rp{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.ck{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin:6px 0;cursor:pointer;color:#cfe0f5}.ck input{margin-top:4px;accent-color:var(--cy)}
+.wl{margin-left:18px;color:#cfe0f5;font-size:14px}.wl li{margin:6px 0;list-style:none;margin-left:-18px}
+.tag.ref{background:#27d3f526;color:#27d3f5}
+textarea,.fm select,.fm input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:#0006;color:var(--tx);font:inherit}.fm{display:grid;gap:10px;margin-top:12px}
+@media(max-width:860px){#dash .grid.subs{grid-template-columns:1fr}#twgrid{grid-template-columns:1fr!important}.met{grid-template-columns:1fr 1fr}}
+[hidden]{display:none!important}
+
+.geo{position:relative;margin:0 0 22px;max-width:920px}
+.gs{display:flex;align-items:center;gap:8px;background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:6px 8px 6px 14px}
+.gs:focus-within{border-color:var(--cy);box-shadow:0 0 0 3px #27d3f522}
+.gs input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--tx);font:inherit;padding:10px 4px}
+.gx{background:none;border:0;color:var(--mu);font-size:22px;cursor:pointer;padding:0 8px}.gx:hover{color:var(--tx)}
+.gb{margin:0;padding:9px 14px;font-size:14px;white-space:nowrap}
+#gl{position:absolute;left:0;right:0;top:56px;z-index:25;list-style:none;padding:6px;background:#07121f;border:1px solid var(--line);border-radius:14px;max-height:340px;overflow:auto;box-shadow:0 14px 50px #000a}
+#gl li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;cursor:pointer}
+#gl li[aria-selected=true],#gl li:hover{background:#27d3f51a}#gl .ic{font-size:18px;line-height:1.2}#gl .t b{display:block}#gl .t span{color:var(--mu);font-size:13px}#gl li.empty{cursor:default;color:var(--mu)}
+.spin{width:18px;height:18px;border:2px solid #27d3f544;border-top-color:var(--cy);border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+#gmsg{font-size:13px;color:var(--mu);min-height:20px;margin-top:6px}#gmsg.err{color:#ff8a8a}
+.gsel{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;padding:10px 14px;border:1px solid var(--cy);border-radius:12px;background:#27d3f510;font-size:14px}.gsel b{font-size:16px}.gsel .mu{font-size:13px}
+.gbanner{margin-top:10px;padding:12px 14px;border:1px solid #ff8a1f88;border-radius:12px;background:#ff8a1f12;color:#ffd9b0;font-size:14px}
+.sk{border-radius:10px;background:linear-gradient(90deg,#ffffff0a,#ffffff1a,#ffffff0a);background-size:200% 100%;animation:shim 1.3s infinite}@keyframes shim{to{background-position:-200% 0}}
+section.updating{opacity:.55;transition:opacity .25s}
+body.geo-na section:not(#dash){opacity:.25;pointer-events:none}body.geo-na #dash>.grid{display:none}
+.gpg{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px;margin:16px 0 22px}.gpg .card h3{font-size:15px;margin-bottom:8px}
+.gv{font-size:34px;font-weight:800;line-height:1.1;margin-bottom:6px}.gu{font-size:14px;color:var(--mu);font-weight:600}
+.krow{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:5px 0;border-bottom:1px solid var(--line)}.krow b{text-align:right;font-weight:600}
+.tag.hist{background:#8b7bff26;color:#b3a8ff}.tag.est{background:#ffb34726;color:#ffb347}.tag.na{background:#ffffff14;color:#8aa0bd}
+.leaflet-container{background:#07121f;font-family:inherit}.leaflet-tooltip{background:#07121f;color:#eaf2ff;border:1px solid var(--line)}.leaflet-tooltip-top:before{border-top-color:#07121f}
+#gq:focus,#gq:focus-visible{outline:none}.gb:focus-visible,.gx:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+@media(max-width:700px){.gs{flex-wrap:wrap}.gb{width:100%}}
+
+.demorow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}.demorow .btn{margin:0;padding:8px 14px;font-size:14px}.demorow .mu{font-size:13px}
+#demochips{margin-top:10px}#demochips button.on{background:var(--cy);color:#041018;border-color:var(--cy);font-weight:600}
+.welcome{margin:6px 0 20px;max-width:920px}.welcome.flash{box-shadow:0 0 0 3px #27d3f588;transition:box-shadow .3s}.welcome h3{font-size:22px;margin-bottom:6px}
+#welcome{display:none}body.no-loc #welcome{display:block}
+body.no-loc section:not(#dash){display:none}body.no-loc #dash>.grid{display:none}body.no-loc #gsel{display:none}
+#modechips{display:none}body.demo-mode #modechips{display:flex}
+body.no-loc #st{display:none}
+</style></head><body class="no-loc">
+<nav><b>AQUA<i>HEAT</i> AI</b><a href="#dash">Dashboard</a><a href="#twin">City Twin</a><a href="#map">Risk Map</a><a href="#whatif">What-If</a><a href="#plan">Action Plan</a><a href="#water">Water &amp; Leaks</a><a href="#alert">Alerts</a><a href="#how">Trust</a><a href="/methodology">Methodology</a><a href="#alert" class="bell" id="bell" data-n="1" title="Alerts">🔔</a>
+<div class="pf"><button onclick="$('pfm').classList.toggle('open')" title="Profile">AH</button><div class="card pm" id="pfm"><b>Guest analyst</b><label>Default demo area</label><select id="pl" onchange="saveP()"></select><label>Alerts</label><button class="btn nb" style="margin:0" id="nbtn2" onclick="notif()">Enable browser alerts</button></div></div></nav><div id="bg"></div><canvas id="sf"></canvas><canvas id="g3" aria-label="Interactive 3D globe"></canvas><canvas id="pt"></canvas>
 
 <header class="hero"><div class="in">
 <div class="brand">AQUAHEAT AI</div><small>AI-POWERED HEAT &amp; WATER RESILIENCE PLATFORM</small>
@@ -103,38 +152,61 @@ section{z-index:1;isolation:isolate}
 <a class="btn p" href="#map">Explore Risk Map</a><a class="btn" href="#whatif">Run Prediction</a><a class="btn" onclick="tour()" style="border-color:var(--cy);color:var(--cy)">▶ 30-second demo</a></div></header>
 
 <section class="dash" id="dash"><h2>Environmental Intelligence Dashboard</h2><p class="sub">AI-generated environmental risk assessment. <span id="st" class="mu"></span></p><div class="chips" id="modechips" style="margin:-14px 0 24px"><button class="on" data-m="0">Demo scenario</button><button data-m="1">Live data</button></div>
+<div class="geo" id="geo"><div class="gs" role="search"><span class="gi" aria-hidden="true">📍</span>
+<input id="gq" type="text" role="combobox" aria-expanded="false" aria-controls="gl" aria-autocomplete="list" aria-label="Search for a city, district, state or locality" placeholder="Search any city, district or locality, e.g. Kolkata, Noida, Jaipur" autocomplete="off" spellcheck="false" maxlength="80">
+<span id="gspin" class="spin" hidden aria-hidden="true"></span><button id="gclr" class="gx" type="button" aria-label="Clear search" hidden>×</button><button id="gme" class="btn gb" type="button">◎ Use my location</button></div>
+<div class="demorow"><button id="demobtn" class="btn" type="button" aria-expanded="false" aria-controls="demochips" aria-pressed="false">🧪 Demo data</button><span class="mu">Simulated Delhi NCR scenario for exploring AquaHeat AI. Not real measurements.</span></div>
+<div id="demochips" class="chips" hidden aria-label="Demo areas"></div>
+<ul id="gl" role="listbox" aria-label="Location suggestions" hidden></ul><div id="gmsg" role="status" aria-live="polite"></div><div id="gsel" class="gsel" hidden></div><div id="gbanner" class="gbanner" role="alert" hidden></div></div>
+<div id="gpanel" hidden></div>
+<div id="welcome" class="card welcome"><h3>Choose a place to begin</h3><p class="mu">Search for any city, district or locality to see real forecast data and experimental risk estimates. Or open <b>Demo data</b> to explore every feature with a simulated Delhi NCR scenario. Results appear after you choose one.</p>
+<div class="mu" style="font-size:13px;margin:12px 0 6px">Try a search:</div><div class="chips"><button type="button" data-q="Delhi">Delhi</button><button type="button" data-q="Noida">Noida</button><button type="button" data-q="Kolkata">Kolkata</button><button type="button" data-q="Jaipur">Jaipur</button><button type="button" data-q="Mumbai">Mumbai</button><button type="button" data-q="Bengaluru">Bengaluru</button><button type="button" data-q="Chennai">Chennai</button></div></div>
 <div class="grid g2"><div class="card nexus">
 <div class="ring"><svg width="230" height="230"><circle cx="115" cy="115" r="100" fill="none" stroke="#ffffff14" stroke-width="14"/><circle id="arc" cx="115" cy="115" r="100" fill="none" stroke="#ff3b3b" stroke-width="14" stroke-linecap="round" stroke-dasharray="628" stroke-dashoffset="628" style="transition:stroke-dashoffset 1.4s,stroke .6s"/></svg>
 <div class="n"><b id="nx">0</b><span>/ 100</span><div class="lv" id="nl"></div></div></div>
 <div style="flex:1;min-width:220px"><div class="mu" style="font-size:14px">Heat-Water Nexus Score · <span id="dloc">Gurugram</span></div>
-<div class="met" style="margin:14px 0"><div><b id="m1">-</b><span>Heat Risk</span></div><div><b id="m2">-</b><span>Water Stress</span></div><div><b id="m3">-</b><span>Demand Pressure</span></div><div><b id="m4">-</b><span>Rainfall Deficit</span></div></div>
-<p style="font-size:14px;color:#b9c9de">High temperatures are increasing predicted water demand while rainfall remains below normal.</p><div class="conf"><div class="bar"><i id="cbar" style="width:0"></i></div><div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Prediction confidence <b id="cv"></b></span><span class="mu" id="cr"></span></div><p class="mu" style="font-size:12px;margin-top:4px" id="cn"></p></div></div></div>
-<div class="card why"><h3 id="whyh">Why is the score high?</h3><div id="why"></div><div class="row" style="margin-top:18px;font-weight:800"><span>Final Score</span><span id="fin"></span></div></div></div></section>
+<div class="met" style="margin:14px 0"><div><b id="m1">-</b><span>Heat score</span></div><div><b id="m5">-</b><span>Flood score</span></div><div><b id="m2">-</b><span>Water scarcity</span></div><div><b id="m6">-</b><span>Groundwater stress</span></div><div><b id="m3">-</b><span>Demand pressure</span></div><div><b id="m4">-</b><span>Rainfall deficit</span></div></div><p style="font-size:14px;color:#b9c9de">High temperatures are increasing predicted water demand while rainfall remains below normal.</p><div class="conf"><div class="bar"><i id="cbar" style="width:0"></i></div><div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span>Prediction confidence <b id="cv"></b></span><span class="mu" id="cr"></span></div><p class="mu" style="font-size:12px;margin-top:4px" id="cn"></p></div></div></div>
+<div class="card why"><h3 id="whyh">Why is the score high?</h3><div id="why"></div><div class="row" style="margin-top:18px;font-weight:800"><span>Final Score</span><span id="fin"></span></div></div></div><div class="grid subs" id="subs" style="margin-top:18px"></div></section>
 
+<section id="twin" class="water"><h2>City Survival Twin</h2><p class="sub">A virtual Gurugram-area city. Stress it with heat, rain, drought or falling groundwater, compare it with today, and see which neighbourhoods need help first.</p>
+<p class="mu" id="twnote" style="font-size:13px;margin:-6px 0 12px"></p>
+<div class="chips" id="twl" style="margin-bottom:14px"><button class="on" data-l="nexus">Nexus</button><button data-l="heat">Heat</button><button data-l="flood">Flood</button><button data-l="scarcity">Water scarcity</button><button data-l="gw">Groundwater</button></div>
+<div class="grid" id="twgrid" style="grid-template-columns:1.7fr 1fr"><div class="card" style="padding:12px"><div class="twc"><canvas id="twc" width="1000" height="560"></canvas><div id="twtip"></div></div>
+<div class="twcmp"><span>Baseline</span><input type="range" id="twsplit" min="0" max="100" value="50" aria-label="Compare baseline and scenario"><span>Scenario</span></div>
+<div class="lg"><span><i style="background:#3ddc84"></i>Low</span><span><i style="background:#ffd23f"></i>Moderate</span><span><i style="background:#ff8a1f"></i>High</span><span><i style="background:#ff3b3b"></i>Critical</span><span>Blue slab = flooding · glow = heat · cracked ground = drought · underground blue = groundwater</span></div></div>
+<div class="card"><div class="chips" id="twp" style="margin-bottom:10px"><button data-p="4,-10,15,0">Heatwave</button><button data-p="0,40,0,0">Extreme rainfall</button><button data-p="1.5,-50,20,10">Drought</button><button data-p="0,0,10,30">Groundwater depletion</button><button data-p="0,0,0,0">Reset</button></div>
+<div class="sl"><label>Temperature <b id="twv1"></b></label><input type="range" id="tw1" min="0" max="5" step=".5" value="2"></div>
+<div class="sl"><label>Rainfall <b id="twv2"></b></label><input type="range" id="tw2" min="-50" max="40" value="25"></div>
+<div class="sl"><label>Water demand <b id="twv3"></b></label><input type="range" id="tw3" min="-30" max="50" value="0"></div>
+<div class="sl"><label>Groundwater stress <b id="twv4"></b></label><input type="range" id="tw4" min="-30" max="30" value="15"></div>
+<h3 style="margin:14px 0 4px">Needs help first</h3><p class="mu" style="font-size:12px;margin-bottom:4px">Ranked by the highest of the Nexus, heat, flood and scarcity scores in this scenario.</p><div id="twpri"></div></div></div></section>
 <section id="map" class="bgmap"><h2>AI Environmental Risk Map</h2><p class="sub">Select a layer, then click a location.</p>
-<div class="tabs" id="tabs"><button class="on" data-k="heat">Heat Risk</button><button data-k="water">Water Stress</button><button data-k="nexus">Nexus Risk</button><button data-k="future">Future Risk</button></div>
+<div class="tabs" id="tabs"><button class="on" data-k="heat">Heat</button><button data-k="flood">Flood</button><button data-k="water">Water scarcity</button><button data-k="gw">Groundwater</button><button data-k="nexus">Nexus</button><button data-k="future">7-day outlook</button></div>
 <div class="grid g2"><div class="map" id="mapbox"></div><div class="card info" id="info"></div></div></section>
 
-<section id="heat" class="sat"><h2>Heat Island Detection</h2><p class="sub">Satellite-style scan of <b id="hln">Gurugram</b>: temperature, vegetation, building density and surface.</p>
+<section id="heat" class="sat"><h2>Heat Island Detection</h2><p class="sub">Modelled illustration for <b id="hln">Gurugram</b> built from the area's inputs (temperature, vegetation, building density, surface). It is not satellite imagery.</p>
 <div class="grid g2"><div class="card"><div id="hmap" class="hm"></div><div class="lg"><span><i style="background:#ff4a2e"></i>Heat island zone</span><span><i style="background:#4a6fa5"></i>High-density zone</span><span><i style="background:#2fbf71"></i>Green zone</span><span><i style="background:#1b2c44"></i>Mixed</span></div></div>
 <div class="card why"><div class="mu">HEAT ISLAND RISK</div><div class="big" id="hrisk">-</div><div id="hfac"></div><p id="hrec" style="margin-top:16px;color:#b9c9de"></p></div></div></section>
-<section id="radar" class="atmo"><h2>Future Crisis Radar</h2><p class="sub">From monitoring to prediction.</p>
-<div class="grid g4 rad"><div class="card"><small>NEXT 24 HOURS</small><b>Heat Risk ↑</b><span>Temperature climbs above seasonal baseline.</span></div>
-<div class="card"><small>NEXT 72 HOURS</small><b>Water Demand ↑</b><span>Cooling and household use rise ~18%.</span></div>
-<div class="card"><small>NEXT 7 DAYS</small><b>Combined Risk → HIGH</b><span>Rainfall deficit persists.</span></div>
-<div class="card"><small>NEXT 30 DAYS</small><b>Potential Water Stress</b><span>Storage and groundwater under pressure.</span></div></div><div class="card" style="margin-top:18px"><h3>30-Day Risk Projection: <span id="fln">Gurugram</span></h3><div id="fch"></div><p class="mu" style="font-size:13px;margin-top:8px">Scenario-based projection from the risk model. It is not a weather forecast.</p><div class="lg"><span><i style="background:#fff"></i>Nexus</span><span><i style="background:#ff8a1f"></i>Heat</span><span><i style="background:#27d3f5"></i>Water</span><span id="fpk"></span></div></div></section>
+<section id="radar" class="atmo"><h2>Future Crisis Radar</h2><p class="sub">From monitoring to prediction. Searched places use real forecast data; demo areas use a scenario projection.</p>
+<div class="grid g4 rad"><div class="card"><small>NEXT 24 HOURS</small><b id="rd1t">-</b><span id="rd1d"></span><div id="rd1g" style="margin-top:8px"></div></div><div class="card"><small>NEXT 72 HOURS</small><b id="rd2t">-</b><span id="rd2d"></span><div id="rd2g" style="margin-top:8px"></div></div><div class="card"><small>NEXT 7 DAYS</small><b id="rd3t">-</b><span id="rd3d"></span><div id="rd3g" style="margin-top:8px"></div></div><div class="card"><small>NEXT 30 DAYS</small><b id="rd4t">-</b><span id="rd4d"></span><div id="rd4g" style="margin-top:8px"></div></div></div><div class="card" style="margin-top:18px"><h3>30-Day Risk Projection: <span id="fln">Gurugram</span></h3><div id="fch"></div><p class="mu" style="font-size:13px;margin-top:8px">Scenario-based projection from the risk model. It is not a weather forecast.</p><div class="lg"><span><i style="background:#fff"></i>Nexus</span><span><i style="background:#ff8a1f"></i>Heat</span><span><i style="background:#27d3f5"></i>Water</span><span id="fpk"></span></div></div></section>
 
-<section id="whatif" class="water"><h2>What If?</h2><p class="sub">Change the climate. Watch the risk move.</p>
-<div class="chips" id="presets" style="margin-bottom:18px"><button data-p="2,-20,10">+2°C and drier</button><button data-p="4,-40,25">Heatwave +4°C</button><button data-p="1,-30,0">Dry spell</button><button data-p="0,0,-20">Save 20% water</button><button data-p="0,10,-10">Monsoon recovery</button></div>
+<section id="whatif" class="water"><h2>What If?</h2><p class="sub">Change the climate and compare the baseline with the scenario for Nexus, heat, flood and water scarcity.</p>
+<div class="chips" id="presets" style="margin-bottom:18px"><button data-p="2,-20,10,0">+2°C and drier</button><button data-p="4,-40,25,0">Heatwave +4°C</button><button data-p="0,30,0,20">Wet spell +30% with low groundwater</button><button data-p="0,40,0,0">Extreme rain +40%</button><button data-p="1,-50,20,15">Drought</button><button data-p="0,0,-20,0">Save 20% water</button><button data-p="0,10,-10,0">Monsoon recovery</button></div>
 <div class="grid g2"><div class="card">
 <div class="sl"><label>Temperature <b id="v1"></b></label><input type="range" id="s1" min="0" max="5" step=".5" value="2"><div class="ends"><span>+0°C</span><span>+5°C</span></div></div>
-<div class="sl"><label>Rainfall <b id="v2"></b></label><input type="range" id="s2" min="-50" max="20" value="-20"><div class="ends"><span>-50%</span><span>+20%</span></div></div>
-<div class="sl"><label>Water Consumption <b id="v3"></b></label><input type="range" id="s3" min="-30" max="50" value="10"><div class="ends"><span>-30%</span><span>+50%</span></div></div></div>
-<div class="card"><div class="cmp"><div><small class="mu">Current risk</small><div class="big" id="cur">-</div></div><div class="arrow">→</div><div><small class="mu">Simulated risk</small><div class="big" id="sim">-</div><span id="dl" class="tag sim"></span></div></div>
+<div class="sl"><label>Rainfall <b id="v2"></b></label><input type="range" id="s2" min="-50" max="40" value="-20"><div class="ends"><span>-50%</span><span>+40%</span></div></div>
+<div class="sl"><label>Water consumption <b id="v3"></b></label><input type="range" id="s3" min="-30" max="50" value="10"><div class="ends"><span>-30%</span><span>+50%</span></div></div>
+<div class="sl"><label>Groundwater stress <b id="v4"></b></label><input type="range" id="s4" min="-30" max="30" value="0"><div class="ends"><span>-30 pts (recovering)</span><span>+30 pts (depleting)</span></div></div>
+<details style="margin-top:14px"><summary class="mu">Assumptions and uncertainty</summary><ul id="wass" style="margin:8px 0 0 18px;color:#cfe0f5;font-size:13px"></ul></details></div>
+<div class="card"><div class="cmp"><div><small class="mu">Current Nexus risk</small><div class="big" id="cur">-</div></div><div class="arrow">→</div><div><small class="mu">Simulated Nexus risk</small><div class="big" id="sim">-</div><span id="dl" class="tag sim"></span></div></div>
 <div class="trk"><div class="track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i></div><b id="mk1" title="Current"></b><b id="mk2" title="Simulated"></b></div>
 <div class="tl"><span>LOW</span><span>MODERATE</span><span>HIGH</span><span>CRITICAL</span></div>
-<div class="mu" id="simc" style="font-size:13px;margin:10px 0"></div><div class="why" id="simd"></div>
+<table class="wtab"><tr class="mu" style="font-size:12px"><td>Score</td><td>Now</td><td></td><td>Scenario</td><td>Change</td><td>Likely range</td></tr><tbody id="wtab"></tbody></table>
+<div class="mu" id="simc" style="font-size:13px;margin:6px 0"></div><div class="why" id="simd"></div>
 <p class="ins" id="simtxt"><b>AI Insight:</b> <span id="simi"></span></p><p class="mu" id="simm" style="margin-top:10px;font-size:14px"></p></div></div></section>
+<section id="plan" class="atmo"><h2>AI Resilience Action Plan</h2><p class="sub">Prioritized actions for <b id="pln">Gurugram</b>, ranked by urgency, then benefit per cost. Benefits are model-estimated score reductions under stated assumptions.</p>
+<div class="tabs" id="plab"><button class="on" data-a="residents">For residents</button><button data-a="authorities">For city authorities</button></div>
+<div class="card x"><table class="ptb"><thead><tr><th>#</th><th>Action</th><th>Why it matters</th><th>Urgency</th><th>Est. cost</th><th>Estimated benefit</th></tr></thead><tbody id="plt"></tbody></table></div><p class="mu" id="plnote" style="font-size:13px;margin-top:10px"></p></section>
 
 <section id="agent" class="flow"><h2>🤖 AquaHeat Intelligence</h2><p class="sub">Environmental Decision Agent, grounded in the model's output rather than a general chatbot.</p>
 <div class="grid g2"><div class="card"><div class="chips" id="qchips" style="margin-bottom:12px"><button>Why is the risk high?</button><button>What should citizens do?</button><button>What should authorities do?</button></div>
@@ -142,38 +214,51 @@ section{z-index:1;isolation:isolate}
 <div class="ares" id="ares">Ask about any location on the map.</div><small id="src" class="mu"></small></div>
 <div class="card why"><h3>Model drivers (points)</h3><div id="why2"></div></div></div></section>
 
-<section id="tools" class="water"><h2>Water Tools</h2><p class="sub">Plan usage and capture rainfall.</p>
+<section id="water" class="water"><h2>Water Stress &amp; Leak Intelligence</h2><p class="sub">Groundwater, reported leaks, tanker requests and shortages for <b id="wln">Gurugram</b>.</p>
+<div class="grid g2"><div class="card"><h3>Groundwater</h3><div id="gwc"></div></div><div class="card"><h3>Reports map</h3><p class="mu" style="font-size:12px;margin-bottom:8px">Number = all reports in that area. Click an area to select it.</p><div class="map" id="rmap" style="height:300px"></div></div></div>
+<div class="grid g4" id="wcnt" style="margin-top:18px"></div>
+<div class="grid g2" style="margin-top:18px"><div class="card"><h3>Recent leak, tanker and shortage reports</h3><div id="wrl"></div><p class="mu" style="font-size:12px;margin-top:8px">SAMPLE reports are demo data. Submit real ones in the Alerts section below.</p></div>
+<div class="card"><h3>Consumption anomaly check</h3><p class="mu" style="font-size:13px">Sample series shown. Paste your own daily meter readings in litres (7 or more values).</p><textarea id="ats" rows="3">412, 405, 421, 398, 417, 409, 430, 402, 786, 415, 408, 419, 411, 792</textarea><button class="btn p" style="margin:10px 0 0" id="anb">Check for anomalies</button><div id="anr"></div></div></div></section>
+<section id="tools" class="water"><h2>Rainwater Harvesting &amp; Flood-to-Resource Optimizer</h2><p class="sub">Turn heavy rain into stored water and see what it does to flood risk. Includes a daily water budget.</p>
 <div class="grid g2"><div class="card"><h3>Smart Water Budget</h3><br><div class="chips" id="bchips"></div>
 <div class="grid g3" style="margin:20px 0"><div><small class="mu">Recommended</small><div class="big" style="font-size:28px" id="br"></div></div><div><small class="mu">Estimated</small><div class="big" style="font-size:28px;color:var(--or)" id="be"></div></div><div><small class="mu">Potential saving</small><div class="big" style="font-size:28px;color:var(--cy)" id="bs"></div></div></div>
 <div class="why" id="bparts"></div><p style="margin-top:16px;color:#b9c9de"><b>AI Action Plan:</b> <span id="bplan"></span></p></div>
 <div class="card"><h3>Rainwater Harvesting Optimizer</h3><div class="sl"><label>Roof area <b id="r1"></b></label><input type="range" id="ra" min="30" max="2000" value="120"></div>
 <div class="two"><div><label class="mu" style="font-size:13px">Location</label><select id="hl" style="width:100%"></select></div><div><label class="mu" style="font-size:13px">Building type</label><select id="hb" style="width:100%"><option>House</option><option>Apartment</option><option>School</option><option>Office</option><option>Factory</option></select></div></div>
 <div class="sl"><label>Average annual rainfall <b id="r2"></b></label><input type="range" id="rr" min="200" max="1500" value="550"></div>
-<div class="two"><div><small class="mu">Annual capture</small><div class="big" style="font-size:34px;color:var(--cy)" id="rc"></div></div><div><small class="mu">Recommended storage</small><div class="big" style="font-size:34px" id="rt"></div></div></div>
-<div class="two" style="margin-top:16px"><div class="card" style="padding:14px"><small class="mu">Without harvesting</small><div id="rw" class="lv"></div></div><div class="card" style="padding:14px"><small class="mu">With harvesting</small><div id="rh" class="lv"></div></div></div>
-<p style="margin-top:12px;color:#b9c9de"><b>AI Recommendation:</b> <span id="rs"></span></p></div></div></section>
+<div class="sl"><label>Buildings adopting harvesting <b id="r3"></b></label><input type="range" id="rad" min="0" max="100" value="30"></div>
+<div class="two"><div><small class="mu">Annual capture</small><div class="big" style="font-size:32px;color:var(--cy)" id="rc"></div></div><div><small class="mu">Recommended storage</small><div class="big" style="font-size:32px" id="rt"></div></div></div>
+<div class="two" style="margin-top:14px"><div class="card" style="padding:12px"><small class="mu">Water stress without</small><div id="rw" class="lv"></div></div><div class="card" style="padding:12px"><small class="mu">Water stress with</small><div id="rh" class="lv"></div></div></div>
+<div class="card" style="padding:12px;margin-top:12px"><small class="mu">Flood risk in a design storm: before → after</small><div id="rfl" class="lv"></div><div class="mu" id="rrr" style="font-size:12px"></div></div>
+<ul id="rsg" style="margin:12px 0 0 18px;color:#cfe0f5;font-size:14px"></ul><details style="margin-top:8px"><summary class="mu">Assumptions</summary><ul id="rass" style="margin:8px 0 0 18px;color:#cfe0f5;font-size:13px"></ul></details>
+<p style="margin-top:10px;color:#b9c9de"><b>AI Recommendation:</b> <span id="rs"></span></p></div></div></section>
 
 <section id="impact" class="water"><h2>Impact Simulator</h2><p class="sub">Small actions × many people.</p>
 <div class="card"><div class="sl"><label>Households <b id="i1"></b></label><input type="range" id="ih" min="1000" max="100000" step="1000" value="10000"></div>
 <div class="grid g3"><div><small class="mu">Saved per household/day</small><div class="big">20 L</div></div><div><small class="mu">Total per day</small><div class="big" style="color:var(--cy)" id="id"></div></div><div><small class="mu">Per year</small><div class="big" style="color:var(--cy)" id="iy"></div></div></div></div></section>
 
-<section id="challenge" class="atmo"><h2>Community Green Challenge</h2><p class="sub">Compete with your sector. Every litre and every action counts.</p>
+<section id="challenge" class="atmo"><h2>Community Green Challenge</h2><p class="sub">Sample leaderboard for demonstration: compete with your sector. Every litre and every action counts.</p>
 <div class="tabs" id="ctabs"><button class="on" data-k="water">7-Day Water Saver</button><button data-k="heat">Heat Resilience</button></div>
 <div class="grid g2"><div class="card lb" id="lb"></div><div class="card"><h3>Log your action</h3><div class="ask" style="margin:14px 0"><select id="csec"><option>Sector A</option><option>Sector B</option><option>Sector C</option><option>Sector D</option><option>Sector E</option></select><input id="camt" type="number" min="1" max="5000" value="50" style="max-width:110px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0006;color:var(--tx)"></div><button class="btn p" style="margin:0" onclick="logc()">Add to leaderboard</button><p class="mu" id="cmsg" style="margin-top:12px"></p></div></div></section>
 <section id="brief" class="flow"><h2>AI Crisis Brief</h2><p class="sub">One click. A decision-ready briefing for the selected location.</p>
 <button class="btn p" id="bbtn" style="margin:0 0 18px" onclick="brief()">Generate Environmental Brief</button>
 <div class="card"><div class="chat" id="bout" style="min-height:160px">Your brief will appear here.</div><button class="btn" style="margin:0" onclick="dl()">Download brief</button></div></section>
-<section id="alert"><div class="card alert"><h3>⚠ HEAT-WATER ALERT</h3><p id="alt" style="margin:8px 0 14px"></p>
-<div class="grid g3"><div><small class="mu">Primary driver</small><b style="display:block" id="al1"></b></div><div><small class="mu">Secondary driver</small><b style="display:block" id="al2"></b></div><div><small class="mu">Preparedness level</small><b style="display:block" id="alp"></b></div></div><button class="btn nb" style="margin:16px 0 0" onclick="notif()">Enable browser alerts</button><span id="nmsg" class="mu" style="margin-left:12px;font-size:14px"></span></div>
-<div class="grid g3" style="margin-top:18px"><div class="card act"><div class="ic">👤</div><h3>For Citizens</h3><ul><li>Reduce non-essential water use</li><li>Store drinking water</li><li>Avoid peak-afternoon heat</li></ul></div><div class="card act"><div class="ic">🏢</div><h3>For Buildings</h3><ul><li>Optimize cooling schedules</li><li>Fix leaks, add greywater reuse</li><li>Harvest rainwater</li></ul></div><div class="card act"><div class="ic">🏙️</div><h3>For Authorities</h3><ul><li>Prioritize high-risk zones for supply</li><li>Open cooling centres</li><li>Expand green cover in heat islands</li></ul></div></div></section>
-<section id="how" class="atmo"><h2>Data Intelligence</h2><p class="sub">Where every number comes from, and what is real versus prototype.</p>
-<div class="grid g4" id="dsrc"></div>
+<section id="alert"><h2>Community Impact &amp; Smart Alerts</h2><p class="sub">Warnings for <b id="aln">Gurugram</b> from the heat, water-scarcity and flood scores, with precautions you can tick off.</p>
+<div class="grid" id="alc" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"></div>
+<div style="margin:16px 0"><button class="btn nb" onclick="notif()">Enable browser alerts</button><span id="nmsg" class="mu" style="margin-left:12px;font-size:14px"></span></div>
+<div class="grid g2"><div class="card"><h3>Report a problem</h3><div class="fm"><select id="rtype"><option value="leak">Leak</option><option value="standing_water">Standing water / waterlogging</option><option value="tanker">Tanker request</option><option value="shortage">Water shortage</option></select><select id="rloc"></select><input id="rnote" maxlength="200" placeholder="Short note (optional), e.g. pipe leaking near the market"><button class="btn p" style="margin:0" id="rsub">Submit report</button></div><p class="mu" id="rmsg" style="font-size:13px;margin-top:8px">Reports are saved as COMMUNITY data and counted separately from sample data.</p></div>
+<div class="card"><h3>Recent reports</h3><div id="rlist"></div></div></div></section>
+<section id="how" class="atmo"><h2>Trust &amp; Explainability Center</h2><p class="sub">How reliable is this prediction, where does each number come from, and what is missing?</p>
+<div class="grid g2" id="trc"></div>
+<h2 style="margin-top:56px;font-size:26px">Data Intelligence</h2><p class="sub">Where every indicator comes from, and what is real versus prototype.</p>
+<div class="grid" id="dsrc" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))"></div>
 <h2 style="margin-top:56px;font-size:26px">Architecture</h2><p class="sub">Environmental data to dashboard.</p>
 <div class="card"><div class="pipe" id="pipe"></div></div>
-<div class="card" style="margin-top:18px"><b>Transparency note</b> · <a href="/methodology" style="color:var(--cy)">Full data sources &amp; methodology →</a><p class="mu" style="margin-top:6px">Prototype ML model trained on simulated environmental stress data, designed to be replaceable with live environmental datasets. Scores and projections are scenario-based decision support, not official forecasts. Confidence is the share of 240 ensemble and input-uncertainty scenarios that agree on the risk level; it measures model consistency, not validated real-world accuracy. <span id="st2"></span></p></div></section>
+<div class="card" style="margin-top:18px"><b>Transparency note</b> · <a href="/methodology" style="color:var(--cy)">Full data sources &amp; methodology →</a><p class="mu" style="margin-top:6px">Prototype ML model trained on simulated environmental stress data, designed to be replaceable with live environmental datasets. Heat and water-scarcity scores are formulas over the model inputs; the flood score is a rule-based runoff-versus-drainage index with modelled imperviousness and drainage. Groundwater uses CGWB figures where loaded. Scores and projections are scenario-based decision support, not official forecasts. Confidence is the share of 240 ensemble and input-uncertainty scenarios that agree on the risk level; it measures model consistency, not validated real-world accuracy. <span id="st2"></span></p></div></section>
 <div id="tour" hidden><div class="tw"><span id="tt"></span><div><button class="btn" id="tn">Next</button><button class="btn" id="tx">Skip</button></div><div class="td" id="tdots"></div></div></div>
 <footer>AquaHeat AI · Heat and Water track · <a href="/methodology">Data Sources &amp; Methodology</a><a href="#how">Data Intelligence</a></footer>
 
+<script src="/static/vendor/leaflet/leaflet.js"></script><script>window.LF=window.L;</script>
 <script>
 const $=id=>document.getElementById(id),col={LOW:'#3ddc84',MODERATE:'#ffd23f',HIGH:'#ff8a1f',CRITICAL:'#ff3b3b'};
 const lv=s=>s<35?'LOW':s<55?'MODERATE':s<75?'HIGH':'CRITICAL',fmt=n=>Math.round(n).toLocaleString('en-IN');
@@ -183,17 +268,9 @@ function drivers(el,d){el.innerHTML=d.map(x=>`<div class="dv"><div class="row"><
 function show(l){cur=l;$('dloc').textContent=l.name;count($('nx'),l.nexus);$('nl').textContent=l.level;$('nl').style.color=col[l.level];
  $('arc').style.stroke=col[l.level];$('arc').style.strokeDashoffset=628*(1-l.nexus/100);
  count($('m1'),l.heat);count($('m2'),l.water);count($('m3'),l.demand);count($('m4'),l.rain);drivers($('why'),l.drivers);drivers($('why2'),l.drivers);$('fin').textContent=l.nexus;
- $('info').innerHTML=`<h3>${l.name}</h3><div class="k"><span>Heat Risk</span><b>${l.heat}</b></div><div class="k"><span>Water Stress</span><b>${l.water}</b></div><div class="k"><span>Nexus Score</span><b style="color:${col[l.level]}">${l.nexus} · ${l.level}</b></div><p style="margin-top:14px"><b>Prediction:</b> ${l.nexus>=55?'HIGH RISK IN NEXT 72 HOURS':'Stable over next 72 hours'}</p>`;
+ infoUI(l);
  $('q').value=`Why is the risk ${l.nexus>=55?'high':'moderate'} in ${l.name}?`;draw();sim()}
-function val(l){return layer=='future'?Math.min(100,l.nexus+6):l[layer]}
-function draw(){$('mapbox').innerHTML=L.map(l=>{const c=col[lv(val(l))];return `<div class="pt" style="left:${l.x}%;top:${l.y}%;background:${c}cc;color:${c};box-shadow:0 0 36px 14px ${c}55" onclick="show(L.find(z=>z.name=='${l.name}'))"><em>${l.name} · ${val(l)}</em></div>`}).join('')}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');layer=b.dataset.k;draw()});
-let tm;function sim(){const t=+$('s1').value,r=+$('s2').value,c=+$('s3').value;$('v1').textContent='+'+t+'°C';$('v2').textContent=(r>0?'+':'')+r+'%';$('v3').textContent=(c>0?'+':'')+c+'%';
- clearTimeout(tm);tm=setTimeout(async()=>{try{const d=await J('/api/simulate',{loc:cur.name,temp:t,rain:r,cons:c});count($('cur'),d.current);count($('sim'),d.simulated);$('sim').style.color=col[d.level];
-  const dl=d.simulated-d.current;$('dl').textContent=(dl>0?'+':'')+dl+' · '+d.level;$('dl').className='tag '+(dl>0?'bad':dl<0?'good':'sim');$('mk1').style.left=`calc(${d.current}% - 2px)`;$('mk2').style.left=`calc(${d.simulated}% - 2px)`;
-  $('simc').textContent=`Confidence ${d.conf}% · likely range ${d.lo}-${d.hi}`;drivers($('simd'),d.drivers);$('simi').textContent=d.insight;$('simm').textContent=d.mitigation}catch(e){$('simi').textContent='Simulation unavailable.'}},100)}
-$('presets').onclick=e=>{const b=e.target.closest('button');if(!b)return;const[t,r,c]=b.dataset.p.split(',');$('s1').value=t;$('s2').value=r;$('s3').value=c;sim()};
-['s1','s2','s3'].forEach(i=>$(i).oninput=sim);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function ask(){const q=$('q').value,box=$('ares');box.innerHTML='<span class="mu">Analyzing model output…</span>';
  try{const d=await J('/api/agent',{loc:cur.name,q});drivers($('why2'),cur.drivers);
@@ -209,7 +286,7 @@ const J=(u,b)=>fetch(u,b?{method:'POST',headers:{'Content-Type':'application/jso
 let prof={},lastN='',tk={};try{prof=JSON.parse(localStorage.getItem('ah')||'{}')}catch(e){}
 const bd=l=>`<b style="color:${col[l]}">${l}</b>`;
 function typeTo(el,t){clearInterval(el._t);el.textContent='';let i=0;el._t=setInterval(()=>{el.textContent+=t.slice(i,i+3);i+=3;if(i>t.length)clearInterval(el._t)},12)}
-function saveP(){prof.loc=$('pl').value;try{localStorage.setItem('ah',JSON.stringify(prof))}catch(e){}show(L.find(x=>x.name==prof.loc))}
+function saveP(){prof.loc=$('pl').value;try{localStorage.setItem('ah',JSON.stringify(prof))}catch(e){}enterDemo(prof.loc)}
 const setNB=t=>document.querySelectorAll('.nb').forEach(b=>b.textContent=t);
 function nmsg(t){const e=$('nmsg');if(e)e.textContent=t}
 async function notif(){
@@ -235,9 +312,6 @@ async function island(l){const t=tk.i=Math.random();try{const d=await J('/api/he
 let bt='Household',bdeb;function budget(){if(!cur)return;clearTimeout(bdeb);bdeb=setTimeout(async()=>{try{const d=await J('/api/budget',{type:bt,loc:cur.name});
  $('br').textContent=fmt(d.rec)+' L/day';$('be').textContent=fmt(d.est)+' L/day';$('bs').textContent=fmt(d.save)+' L/day';$('bplan').textContent=d.plan;
  $('bparts').innerHTML=d.parts.map(p=>`<div class="row"><span>${p.name}</span><b>${fmt(p.litres)} L</b></div><div class="bar"><i style="width:${p.litres/d.est*100}%"></i></div>`).join('')}catch(e){$('bplan').textContent='Budget unavailable.'}},80)}
-let rdeb;function rain(){clearTimeout(rdeb);$('r1').textContent=$('ra').value+' m²';$('r2').textContent=$('rr').value+' mm';rdeb=setTimeout(async()=>{try{const d=await J('/api/harvest',{roof:+$('ra').value,rain:+$('rr').value,loc:$('hl').value,btype:$('hb').value});
- count($('rc'),d.capture,' L/yr');$('rt').textContent=fmt(d.storage)+' L';$('rw').innerHTML=`${bd(d.before.level)} · ${d.before.nexus}`;$('rh').innerHTML=`${bd(d.after.level)} · ${d.after.nexus}`;$('rs').textContent=d.rec}catch(e){$('rs').textContent='Calculation unavailable.'}},120)}
-['ra','rr'].forEach(i=>$(i).oninput=rain);$('hb').onchange=rain;$('hl').onchange=()=>{const l=L.find(x=>x.name==$('hl').value);$('rr').value=l.rainfall;rain()};
 $('bchips').innerHTML=['Household','Apartment','School','Office','Community'].map((t,i)=>`<button class="${i?'':'on'}">${t}</button>`).join('');
 $('bchips').onclick=e=>{if(e.target.tagName!='BUTTON')return;[...$('bchips').children].forEach(b=>b.classList.remove('on'));e.target.classList.add('on');bt=e.target.textContent;budget()};
 let ck='water',CD={};async function loadC(){try{CD=await J('/api/challenge');rc()}catch(e){$('lb').innerHTML='<p class="err">Leaderboard unavailable.</p>'}}
@@ -246,14 +320,10 @@ document.querySelectorAll('#ctabs button').forEach(b=>b.onclick=()=>{document.qu
 async function logc(){try{CD=await J('/api/challenge',{challenge:ck,sector:$('csec').value,amount:+$('camt').value});rc();$('cmsg').textContent=`Added ${$('camt').value} ${CD[ck].unit} to ${$('csec').value}. Thank you!`}catch(e){$('cmsg').textContent='Could not save. Check your connection.'}}
 async function brief(){$('bbtn').disabled=true;$('bout').textContent='Generating brief…';try{const d=await J('/api/brief',{loc:cur.name});typeTo($('bout'),d.brief)}catch(e){$('bout').textContent='Brief unavailable. Is the server running?'}$('bbtn').disabled=false}
 function dl(){const t=$('bout').textContent,a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));a.download='aquaheat-brief.txt';a.click()}
-function after(l){confUI(l);const d=l.drivers;$('al1').textContent=d[0].name;$('al2').textContent=d[1].name;$('alp').innerHTML=bd(l.level);
- $('alt').textContent=`${l.name} may enter a ${l.nexus>=55?'high':'moderate'}-risk period within the next 72 hours.`;$('bell').dataset.n=l.nexus>=55?1:0;$('hl').value=l.name;$('rr').value=l.rainfall;
- forecast(l);island(l);budget();rain();
- if(l.nexus>=75&&prof.notify&&window.Notification&&Notification.permission=='granted'&&lastN!=l.name){new Notification('AquaHeat alert',{body:`${l.name}: Nexus ${l.nexus} ${l.level}`});lastN=l.name}}
 const _show=show;show=function(l){if(l){_show(l);after(l)}};
 async function boot(){try{L=await J('/api/locations')}catch(e){$('info').innerHTML='<p class="err">Backend not reachable. Start it with <b>python app.py</b> and open http://127.0.0.1:5000</p>';return}
  const o=L.map(l=>`<option>${l.name}</option>`).join('');$('pl').innerHTML=o;$('hl').innerHTML=o;if(prof.loc)$('pl').value=prof.loc;if(prof.notify&&window.Notification&&Notification.permission=='granted')setNB('Alerts enabled ✓ (click to turn off)');else prof.notify=false;
- show(L.find(x=>x.name==prof.loc)||L[0]);loadC();pipeline();if(/[?&]demo=1/.test(location.search))setTimeout(tour,1800)}
+ loadC();pipeline();fillDemoChips();if(/[?&]demo=1/.test(location.search))setTimeout(tour,1800)}
 
 function confUI(l){$('whyh').textContent=`Why is the score ${l.level.toLowerCase()}?`;$('cv').textContent=l.conf+'%';$('cbar').style.width=l.conf+'%';$('cr').textContent=`likely range ${l.lo}-${l.hi}`;$('cn').textContent=`Share of ${l.n} ensemble × input-uncertainty scenarios that agree on the ${l.level} level. Measures model consistency, not validated accuracy.`}
 async function pipeline(){try{const d=await J('/api/pipeline');[...$('modechips').children].forEach(b=>b.classList.toggle('on',(b.dataset.m=='1')==d.live));
@@ -268,7 +338,9 @@ const TOUR=[
  {t:'Select a location on the risk map. We start with Gurugram.',e:'#mapbox',f:()=>show(L.find(x=>x.name=='Gurugram')),d:4000},
  {t:'The Heat-Water Nexus Score combines both risks into one number.',e:'#dash .nexus',d:4200},
  {t:'Why? Temperature, rainfall, demand and vegetation each add points.',e:'#dash .why',d:4200},
+ {t:'The City Survival Twin shows which neighbourhoods need help first when heat, rain or drought hits.',e:'#twin .grid',f:()=>twApply([4,-10,15,0]),d:5200},
  {t:'What if it gets 2°C hotter? Watch the risk rise.',e:'#whatif .grid',f:()=>{$('s1').value=0;sim();setTimeout(()=>{$('s1').value=2;sim()},1400)},d:4800},
+ {t:'The action plan ranks what to do first, with cost and benefit.',e:'#plan .card',d:4500},
  {t:'The AI agent explains the risk and writes an action plan.',e:'#agent .grid',f:()=>ask(),d:7000},
  {t:'Rainwater harvesting lowers water stress and saves water.',e:'#tools .grid',f:()=>{$('ra').value=120;rain()},d:5000}];
 function spotOff(){clearTimeout(tourT);if(spotEl)spotEl.classList.remove('spot');spotEl=null}
@@ -278,11 +350,11 @@ function tourGo(i){spotOff();tourI=i;
  const s=TOUR[i];$('tt').textContent=s.t;$('tn').hidden=false;$('tx').textContent='Skip';$('tdots').innerHTML=TOUR.map((_,k)=>`<i class="${k<=i?'on':''}"></i>`).join('');
  if(s.f)s.f();const el=document.querySelector(s.e);if(el){el.scrollIntoView({behavior:'smooth',block:i?'center':'start'});setTimeout(()=>{if(tourI==i){el.classList.add('spot');spotEl=el}},600)}
  tourT=setTimeout(()=>tourGo(i+1),s.d)}
-function tour(){if(!cur)return;$('tour').hidden=false;scrollTo({top:0,behavior:'smooth'});tourGo(0)}
+function tour(){if(!cur){enterDemo('Gurugram');setTimeout(tour,3000);return}$('tour').hidden=false;scrollTo({top:0,behavior:'smooth'});tourGo(0)}
 $('tn').onclick=()=>tourGo(tourI+1);$('tx').onclick=tourStop;
 boot();
 (function(){const c=$('pt'),x=c.getContext('2d');if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;let w,h,P=[];
  function rs(){w=c.width=innerWidth;h=c.height=innerHeight}rs();addEventListener('resize',rs);
  for(let i=0;i<60;i++)P.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.4+.4,vx:(Math.random()-.3)*.25,vy:(Math.random()-.5)*.12,c:Math.random()<.6?'39,211,245':'255,138,31'});
  (function f(){if(!document.hidden){x.clearRect(0,0,w,h);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x>w)p.x=0;if(p.x<0)p.x=w;if(p.y>h)p.y=0;if(p.y<0)p.y=h;x.fillStyle=`rgba(${p.c},.7)`;x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()})}requestAnimationFrame(f)})()})();
-</script><script src="/static/stars.js"></script><script src="/static/three.min.js"></script><script src="/static/globe.js"></script></body></html>
+</script><script src="/static/features.js"></script><script src="/static/geo.js"></script><script src="/static/stars.js"></script><script src="/static/three.min.js"></script><script src="/static/globe.js"></script></body></html>
