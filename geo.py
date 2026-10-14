@@ -80,6 +80,14 @@ def init(m):
             if q.lower() in n.lower():
                 la, lo = m.COORD[n]; out.append({"id": None, "name": n, "admin1": "Delhi NCR", "admin2": None, "country": "India", "country_code": "IN", "lat": la, "lon": lo, "elevation": None, "population": None, "timezone": "Asia/Kolkata", "feature": "BUILTIN", "label": n + ", Delhi NCR, India"})
         return out
+    @app.route("/api/map-config")
+    def map_config():
+        """Map tile source. Default: OpenStreetMap standard tiles (no API key), darkened in CSS to match the theme.
+        Override with MAP_TILE_URL / MAP_TILE_ATTRIBUTION / MAP_TILE_DARKEN=0|1. A tile key, if any, is necessarily visible to browsers, so use a domain-restricted key."""
+        url = os.getenv("MAP_TILE_URL") or "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        return jsonify({"url": url, "attribution": os.getenv("MAP_TILE_ATTRIBUTION") or "© OpenStreetMap contributors",
+                        "darken": (os.getenv("MAP_TILE_DARKEN", "1") != "0") if not os.getenv("MAP_TILE_URL") else os.getenv("MAP_TILE_DARKEN", "0") == "1", "max_zoom": 19})
+
     @app.route("/api/locations/search")
     def search():
         q = " ".join((request.args.get("q") or "").split())

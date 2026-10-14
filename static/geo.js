@@ -86,9 +86,11 @@ function renderPanel(j){const p=$('gpanel'),d=j.data,l=j.location,r=j.risk,h=d.h
  const lim=`<div class="card" style="grid-column:1/-1"><h3>Limitations and missing data</h3><ul class="wl">${(d.warnings||[]).concat(d.limitations||[]).map(x=>`<li>⚠ ${esc(x)}</li>`).join('')}</ul></div>`;
  p.innerHTML=`<div class="gpg">${idc}${cc}${hc}${rc}${fc}${wc}${gc}${sm}${chart}${val2}${prov}${lim}</div>`}
 /* ---------- geographic risk map (Leaflet) ---------- */
-let LM=null,LMG=null;
+let LM=null,LMG=null,MAPCFG={url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',attribution:'© OpenStreetMap contributors',darken:true,max_zoom:19};
+fetch('/api/map-config').then(r=>r.json()).then(c=>{if(c&&c.url)MAPCFG=c}).catch(()=>{});
+function mapNote(show){let n=$('lmapnote');if(!n){n=document.createElement('div');n.id='lmapnote';n.className='lmapnote';n.textContent='Map tiles could not be loaded. Markers still show each location.';$('mapbox').appendChild(n)}n.style.display=show?'block':'none'}
 function mapInit(){if(LM||!window.LF)return;const el=$('mapbox');el.innerHTML='';el.setAttribute('role','region');el.setAttribute('aria-label','Geographic risk map');
- LM=LF.map(el,{scrollWheelZoom:false}).setView([28.5,77.1],8);LF.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}).addTo(LM);LMG=LF.layerGroup().addTo(LM);setTimeout(()=>LM.invalidateSize(),300);addEventListener('resize',()=>LM&&LM.invalidateSize())}
+ LM=LF.map(el,{scrollWheelZoom:false}).setView([28.5,77.1],8);const cfg=MAPCFG,tl=LF.tileLayer(cfg.url,{maxZoom:cfg.max_zoom||19,attribution:cfg.attribution}).addTo(LM);if(cfg.darken)el.classList.add('map-dark');let te=0;tl.on('tileerror',()=>{if(++te===4)mapNote(true)});tl.on('tileload',()=>{if(te>=4)mapNote(false);te=0});LMG=LF.layerGroup().addTo(LM);setTimeout(()=>LM.invalidateSize(),300);addEventListener('resize',()=>LM&&LM.invalidateSize())}
 function draw(){mapInit();if(!LM)return;LMG.clearLayers();const pts=[],ck=cur?cur.name:'',gm=GEOS.mode==='geo';
  if(gm){GEOLIST.forEach(({risk,p},name)=>{const v=val(risk),c=LV(v),sel=name===ck,m=LF.circleMarker([risk.lat,risk.lon],{radius:sel?16:10,color:'#fff',weight:sel?3:1.5,fillColor:c,fillOpacity:.9}).addTo(LMG);m.bindTooltip(`${name}: ${v}`);if(!sel)m.on('click',()=>loadGeo(p));pts.push([risk.lat,risk.lon])})}
  else L.forEach(l=>{if(l.lat==null)return;const v=val(l),c=LV(v),sel=ck===l.name,m=LF.circleMarker([l.lat,l.lon],{radius:sel?13:9,color:sel?'#fff':c,weight:sel?3:1.5,fillColor:c,fillOpacity:.8}).addTo(LMG);m.bindTooltip(`${l.name}: ${v}`);m.on('click',()=>show(l));pts.push([l.lat,l.lon])});

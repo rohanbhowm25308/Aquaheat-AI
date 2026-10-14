@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AquaHeat AI — Predict Heat. Protect Water. Prevent Crisis.</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preload" href="/static/three.min.js" as="script"><link rel="preload" href="/static/globe.js" as="script">
 <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 <style>
 :root{--bg:#050a14;--glass:rgba(10,20,38,.62);--line:rgba(120,190,255,.16);--cy:#27d3f5;--or:#ff8a1f;--tx:#eaf2ff;--mu:#8aa0bd}
@@ -65,7 +66,8 @@ section{z-index:1;isolation:isolate}
 .act ul{margin:10px 0 0 18px;color:#b9c9de;font-size:14px}.act .ic{font-size:30px}
 @media(max-width:860px){.bell{display:inline-block!important}.hm{gap:1px}}
 #g3{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
-.nogl:before{content:"";position:absolute;right:6%;top:15%;width:50vh;height:50vh;border-radius:50%;background:radial-gradient(circle at 35% 35%,#1e7fb0,#06203a 60%,#020712);box-shadow:0 0 80px #27d3f544,40px 20px 120px #ff8a1f33}
+.hero:before{content:"";position:absolute;left:71%;top:51.3%;width:min(46.4vh,32vw);height:min(46.4vh,32vw);transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 36% 34%,#2c8fc2,#0b3b66 46%,#041528 78%);box-shadow:0 0 30px #27d3f514;opacity:.95;transition:opacity .35s ease;z-index:0;pointer-events:none}
+.hero.globe-ready:before{opacity:0}
 #bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(60% 50% at 8% 18%,#0b3a6a66,transparent 70%),radial-gradient(50% 45% at 92% 88%,#7a2a0a55,transparent 70%),radial-gradient(45% 40% at 55% 45%,#0a4a6a40,transparent 70%),#050a14;animation:aur 32s ease-in-out infinite alternate}
 #bg:after{content:"";position:absolute;inset:0;background-image:linear-gradient(#78beff0f 1px,transparent 1px),linear-gradient(90deg,#78beff0f 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse at 50% 45%,#000 15%,transparent 78%);mask-image:radial-gradient(ellipse at 50% 45%,#000 15%,transparent 78%)}
 @keyframes aur{to{transform:scale(1.18) translate(-2.5%,2%)}}
@@ -130,7 +132,7 @@ body.geo-na section:not(#dash){opacity:.25;pointer-events:none}body.geo-na #dash
 .gv{font-size:34px;font-weight:800;line-height:1.1;margin-bottom:6px}.gu{font-size:14px;color:var(--mu);font-weight:600}
 .krow{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:5px 0;border-bottom:1px solid var(--line)}.krow b{text-align:right;font-weight:600}
 .tag.hist{background:#8b7bff26;color:#b3a8ff}.tag.est{background:#ffb34726;color:#ffb347}.tag.na{background:#ffffff14;color:#8aa0bd}
-.leaflet-container{background:#07121f;font-family:inherit}.leaflet-tooltip{background:#07121f;color:#eaf2ff;border:1px solid var(--line)}.leaflet-tooltip-top:before{border-top-color:#07121f}
+.leaflet-container{background:#07121f;font-family:inherit}.map-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9) saturate(.6)}.lmapnote{display:none;position:absolute;left:10px;bottom:30px;z-index:900;background:#07121fee;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:#ffd9b0}.leaflet-tooltip{background:#07121f;color:#eaf2ff;border:1px solid var(--line)}.leaflet-tooltip-top:before{border-top-color:#07121f}
 #gq:focus,#gq:focus-visible{outline:none}.gb:focus-visible,.gx:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
 @media(max-width:700px){.gs{flex-wrap:wrap}.gb{width:100%}}
 
@@ -141,6 +143,7 @@ body.geo-na section:not(#dash){opacity:.25;pointer-events:none}body.geo-na #dash
 body.no-loc section:not(#dash){display:none}body.no-loc #dash>.grid{display:none}body.no-loc #gsel{display:none}
 #modechips{display:none}body.demo-mode #modechips{display:flex}
 body.no-loc #st{display:none}
+@media(max-aspect-ratio:23/20){.hero:before{left:50%;top:39.4%;width:min(35vh,56vw);height:min(35vh,56vw)}}
 </style></head><body class="no-loc">
 <nav><b>AQUA<i>HEAT</i> AI</b><a href="#dash">Dashboard</a><a href="#twin">City Twin</a><a href="#map">Risk Map</a><a href="#whatif">What-If</a><a href="#plan">Action Plan</a><a href="#water">Water &amp; Leaks</a><a href="#alert">Alerts</a><a href="#how">Trust</a><a href="/methodology">Methodology</a><a href="#alert" class="bell" id="bell" data-n="1" title="Alerts">🔔</a>
 <div class="pf"><button onclick="$('pfm').classList.toggle('open')" title="Profile">AH</button><div class="card pm" id="pfm"><b>Guest analyst</b><label>Default demo area</label><select id="pl" onchange="saveP()"></select><label>Alerts</label><button class="btn nb" style="margin:0" id="nbtn2" onclick="notif()">Enable browser alerts</button></div></div></nav><div id="bg"></div><canvas id="sf"></canvas><canvas id="g3" aria-label="Interactive 3D globe"></canvas><canvas id="pt"></canvas>

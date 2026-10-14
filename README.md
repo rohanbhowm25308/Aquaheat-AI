@@ -45,3 +45,6 @@ Search any place (Open-Meteo geocoding), then every dashboard section uses that 
 2. **Search a place** (any city, district or locality): every section shows that place with real forecast data. Demo areas are not mixed in. Places searched in the same session are compared in the City Twin and shown on the map.
 3. **Demo data**: pick Gurugram, Sector 57, Delhi, Noida, Faridabad, Manesar, Sohna or Dwarka. These are simulated Delhi NCR scenarios (the Demo/Live toggle appears only here).
 4. Clicking a nav link before choosing either shows a hint instead of an empty section. "Use demo scenario" returns to demo data.
+
+## Map tiles
+The risk map uses OpenStreetMap tiles (no API key), darkened in CSS. Please respect the OSM tile usage policy; for heavy use set `MAP_TILE_URL` (and `MAP_TILE_ATTRIBUTION`, `MAP_TILE_DARKEN`) to a provider you have an account with. Keys in a tile URL are visible to browsers, so restrict them to your domain. The previous CARTO dark tiles now require an API key and were removed.

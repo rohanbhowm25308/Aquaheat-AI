@@ -145,6 +145,15 @@ def use_my_location_reverse_label():
 def location_data_endpoint():
     reset(); j = C.get("/api/location-data?lat=22.5626&lon=88.363&name=Kolkata").json; assert j["risk_ready"] and j["data"]["rain"]["past14"] == 14.0
 @test
+def map_tiles_need_no_api_key():
+    reset(); j = C.get("/api/map-config").json; assert "openstreetmap.org" in j["url"] and j["darken"] is True and "OpenStreetMap" in j["attribution"]
+    for f in ("static/geo.js", "static/index.html", "static/features.js"):
+        src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), f), encoding="utf-8").read(); assert "cartocdn" not in src and "basemaps.cartocdn" not in src, f
+    os.environ["MAP_TILE_URL"] = "https://tiles.example.com/{z}/{x}/{y}.png"
+    try: j2 = C.get("/api/map-config").json; assert j2["url"].startswith("https://tiles.example.com") and j2["darken"] is False
+    finally: os.environ.pop("MAP_TILE_URL")
+
+@test
 def risk_rate_limit():
     reset(); codes = [risk("Gurugram, Haryana, India", 28.4601, 77.02635).status_code for _ in range(26)]; assert codes[0] == 200 and codes[-1] == 429
 @test
