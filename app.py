@@ -343,7 +343,8 @@ def load_latest():
 
 def fetch_one(n):
     la, lo = COORD[n]
-    r = requests.get("https://api.open-meteo.com/v1/forecast", timeout=8, params={"latitude": la, "longitude": lo,
+    _k = os.getenv("OPEN_METEO_API_KEY")
+    r = requests.get(("https://customer-api.open-meteo.com" if _k else "https://api.open-meteo.com") + "/v1/forecast", timeout=8, params={**({"apikey": _k} if _k else {}),"latitude": la, "longitude": lo,
         "daily": "temperature_2m_max,precipitation_sum,et0_fao_evapotranspiration", "hourly": "soil_moisture_0_to_7cm",
         "past_days": 14, "forecast_days": 7, "timezone": "auto"})
     r.raise_for_status()

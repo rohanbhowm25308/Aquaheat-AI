@@ -48,3 +48,7 @@ Search any place (Open-Meteo geocoding), then every dashboard section uses that 
 
 ## Map tiles
 The risk map uses OpenStreetMap tiles (no API key), darkened in CSS. Please respect the OSM tile usage policy; for heavy use set `MAP_TILE_URL` (and `MAP_TILE_ATTRIBUTION`, `MAP_TILE_DARKEN`) to a provider you have an account with. Keys in a tile URL are visible to browsers, so restrict them to your domain. The previous CARTO dark tiles now require an API key and were removed.
+
+## API keys (summary)
+- **Open-Meteo: no key needed.** Free for non-commercial use (about 10,000 calls a day, attribution required: CC BY 4.0). For commercial use, subscribe at https://open-meteo.com/en/pricing; you receive a key immediately. Put it in `OPEN_METEO_API_KEY`; the app then switches to the `customer-*` hosts automatically.
+- Groq (`GROQ_API_KEY`), AWS (Bedrock, S3, SageMaker, AgentCore) and `MAP_TILE_URL` keys are all optional.

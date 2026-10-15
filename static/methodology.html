@@ -29,6 +29,7 @@ ul{margin-left:20px;color:#cfe0f5}li{margin:4px 0}.x{overflow-x:auto}</style></h
 <li><b>Confidence:</b> 12 models trained on resampled data predict under 20 random perturbations of the inputs (240 draws). Confidence is the share of draws that land in the same risk level; the likely range is the 5th to 95th percentile. The input-uncertainty sizes are assumptions.</li>
 <li><b>What-If:</b> the same model re-scores the scenario. The rainfall slider is a percent change in rainfall (drier means higher deficit and higher risk).</li>
 <li><b>30-day projection:</b> a scenario-based projection from the model, not a weather forecast.</li></ul></div>
+<p class="mu" style="margin-top:30px;font-size:13px">Weather, climate-normal and river-discharge data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Map data © OpenStreetMap contributors.</p>
 <h2>Limitations and roadmap</h2><div class="card"><ul>
 <li>The model is trained on simulated environmental-stress data. Hold-out scores are measured against the same simulator, so they show the model learned the simulation, not real-world accuracy.</li>
 <li>Live mode uses real Open-Meteo temperature, rainfall and soil moisture. Vegetation is a soil-moisture proxy, not NDVI. Water demand is anchored to press-reported Gurugram figures (not meter data) for Gurugram-area locations and modelled elsewhere; no open live water-demand feed exists for NCR.</li>

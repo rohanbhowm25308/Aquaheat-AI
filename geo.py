@@ -31,7 +31,10 @@ def cset(k, val, ttl):
 
 def http_json(url, params, timeout=8, headers=UA):
     key = os.getenv("OPEN_METEO_API_KEY")
-    if key and "open-meteo.com" in url: params = {**params, "apikey": key}
+    if key and "open-meteo.com" in url:   # paid keys only work on the dedicated customer-* hosts
+        for free in ("https://geocoding-api.", "https://archive-api.", "https://flood-api.", "https://api."):
+            if url.startswith(free): url = "https://customer-" + url[len("https://"):]; break
+        params = {**params, "apikey": key}
     try: r = requests.get(url, params=params, timeout=timeout, headers=headers)
     except requests.Timeout: raise ProviderError("timeout", "The data provider took too long to respond.", 504)
     except requests.RequestException: raise ProviderError("network", "The data provider could not be reached.", 503)

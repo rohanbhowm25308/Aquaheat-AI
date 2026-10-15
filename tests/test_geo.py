@@ -154,6 +154,23 @@ def map_tiles_need_no_api_key():
     finally: os.environ.pop("MAP_TILE_URL")
 
 @test
+def paid_key_uses_customer_hosts_and_free_mode_does_not():
+    seen = []
+    orig = requests.get
+    def spy(url, params=None, **kw): seen.append((url, dict(params or {}))); return orig(url, params=params, **kw)
+    requests.get = spy
+    try:
+        reset(); os.environ.pop("OPEN_METEO_API_KEY", None); C.get("/api/locations/search?q=Noida")
+        assert seen[-1][0].startswith("https://geocoding-api.open-meteo.com") and "apikey" not in seen[-1][1], seen[-1]
+        reset(); os.environ["OPEN_METEO_API_KEY"] = "abc123"; C.get("/api/locations/search?q=Kolkata")
+        assert seen[-1][0].startswith("https://customer-geocoding-api.open-meteo.com") and seen[-1][1]["apikey"] == "abc123", seen[-1]
+        reset(); n0 = len(seen); risk("Gurugram, Haryana, India", 28.4601, 77.02635)
+        hosts = {u.split("/")[2] for u, p in seen[n0:] if "open-meteo" in u}; assert len(hosts) >= 3 and all(h.startswith("customer-") for h in hosts), hosts
+        assert all(p.get("apikey") == "abc123" for u, p in seen[n0:] if "open-meteo" in u)
+    finally:
+        requests.get = orig; os.environ.pop("OPEN_METEO_API_KEY", None)
+
+@test
 def risk_rate_limit():
     reset(); codes = [risk("Gurugram, Haryana, India", 28.4601, 77.02635).status_code for _ in range(26)]; assert codes[0] == 200 and codes[-1] == 429
 @test
