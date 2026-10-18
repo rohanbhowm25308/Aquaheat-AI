@@ -33,6 +33,7 @@ ul{margin-left:20px;color:#cfe0f5}li{margin:4px 0}.x{overflow-x:auto}</style></h
 <h2>Limitations and roadmap</h2><div class="card"><ul>
 <li>The model is trained on simulated environmental-stress data. Hold-out scores are measured against the same simulator, so they show the model learned the simulation, not real-world accuracy.</li>
 <li>Live mode uses real Open-Meteo temperature, rainfall and soil moisture. Vegetation is a soil-moisture proxy, not NDVI. Water demand is anchored to press-reported Gurugram figures (not meter data) for Gurugram-area locations and modelled elsewhere; no open live water-demand feed exists for NCR.</li>
+<li>Open-Meteo limits free requests per server address, and shared hosts such as Render share addresses. When that happens the server retries, serves its last saved data (marked as such), or asks your browser to fetch the data directly. The server validates browser-fetched data before use, and the data panel says when this happened.</li>
 <li>Roadmap: train on historical IMD, CGWB and satellite NDVI data, validate against observed shortages, and add utility meter data.</li></ul></div>
 <script>const $=id=>document.getElementById(id);
 Promise.all([fetch('/api/model').then(r=>r.json()),fetch('/api/pipeline').then(r=>r.json())]).then(([m,p])=>{

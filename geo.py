@@ -1,7 +1,7 @@
 """Smart location search and hyperlocal climate intelligence.
 Providers (no API key needed): Open-Meteo Geocoding, Forecast, Archive (10-year normals) and Flood APIs; Nominatim for reverse labels.
 Optional OPEN_METEO_API_KEY (server-side only) is added to Open-Meteo requests when set."""
-import os, math, time, threading, datetime
+import os, math, time, threading, datetime, hmac, hashlib, secrets, contextlib
 from collections import OrderedDict
 import numpy as np, requests
 from flask import jsonify, request
@@ -9,41 +9,57 @@ from flask import jsonify, request
 UA = {"User-Agent": "AquaHeatAI/1.0 (hackathon prototype)"}
 URL = {"geo": "https://geocoding-api.open-meteo.com/v1/search", "fc": "https://api.open-meteo.com/v1/forecast", "arch": "https://archive-api.open-meteo.com/v1/archive",
        "flood": "https://flood-api.open-meteo.com/v1/flood", "rev": "https://nominatim.openstreetmap.org/reverse"}
-TTL = {"geo": 3600, "fc": 900, "clim": 86400, "flood": 3600, "rev": 86400}
+TTL = {"geo": 3600, "fc": 900, "clim": 7*86400, "flood": 3600, "rev": 86400}
 GW_POINTS = [("Gurugram", 28.46, 77.03, 18), ("Manesar", 28.36, 76.94, 12), ("Sohna", 28.25, 77.07, 12), ("Faridabad", 28.41, 77.31, 15)]  # CGWB-sourced areas (name, lat, lon, radius km)
 SOUTH_ASIA = {"IN", "PK", "BD", "NP", "LK", "BT", "MM"}
 _CACHE, _CL, _RL = {}, threading.Lock(), {}
 EVICT_AT = 40
 
 class ProviderError(Exception):
-    def __init__(self, kind, msg, status=502): super().__init__(msg); self.kind, self.msg, self.status = kind, msg, status
+    def __init__(self, kind, msg, status=502, retry_after=None): super().__init__(msg); self.kind, self.msg, self.status, self.retry_after = kind, msg, status, retry_after
+RETRYABLE = {"rate_limited", "timeout", "network", "provider_error", "bad_response"}
+_OM = threading.BoundedSemaphore(3)   # never more than 3 simultaneous Open-Meteo requests from this server
+SECRET = (os.getenv("APP_SECRET") or secrets.token_hex(16)).encode()   # signs one-time tokens for the browser fallback (set APP_SECRET if you run several workers)
 
-def cget(k):
+def cget(k, stale=False):
+    """Fresh cache hit; with stale=True an expired-but-kept entry is also returned (used when a provider is rate limiting us)."""
     with _CL:
         v = _CACHE.get(k)
-        if v and v[0] > time.time(): return v[1]
-        _CACHE.pop(k, None)
-def cset(k, val, ttl):
+        if not v: return None
+        fresh, hard, val = v; now = time.time()
+        if now < fresh or (stale and now < hard): return val
+        if now >= hard: _CACHE.pop(k, None)
+def cset(k, val, ttl, keep=86400):
     with _CL:
         if len(_CACHE) > 300:
-            for kk in [kk for kk, vv in _CACHE.items() if vv[0] < time.time()] or list(_CACHE)[:60]: _CACHE.pop(kk, None)
-        _CACHE[k] = (time.time() + ttl, val)
+            for kk in [kk for kk, vv in _CACHE.items() if vv[1] < time.time()] or list(_CACHE)[:60]: _CACHE.pop(kk, None)
+        t = time.time(); _CACHE[k] = (t + ttl, t + ttl + keep, val)
 
-def http_json(url, params, timeout=8, headers=UA):
-    key = os.getenv("OPEN_METEO_API_KEY")
-    if key and "open-meteo.com" in url:   # paid keys only work on the dedicated customer-* hosts
+def http_json(url, params, timeout=8, headers=UA, retries=2):
+    key = os.getenv("OPEN_METEO_API_KEY"); om = "open-meteo.com" in url
+    if key and om:   # paid keys only work on the dedicated customer-* hosts
         for free in ("https://geocoding-api.", "https://archive-api.", "https://flood-api.", "https://api."):
             if url.startswith(free): url = "https://customer-" + url[len("https://"):]; break
         params = {**params, "apikey": key}
-    try: r = requests.get(url, params=params, timeout=timeout, headers=headers)
-    except requests.Timeout: raise ProviderError("timeout", "The data provider took too long to respond.", 504)
-    except requests.RequestException: raise ProviderError("network", "The data provider could not be reached.", 503)
-    if r.status_code == 429: raise ProviderError("rate_limited", "The data provider is rate limiting requests. Please wait a minute and try again.", 429)
-    try: j = r.json()
-    except ValueError: raise ProviderError("bad_response", "The data provider returned an unreadable response.", 502)
-    if r.status_code >= 500: raise ProviderError("provider_error", "The data provider reported an internal error.", 502)
-    if r.status_code >= 400 or (isinstance(j, dict) and j.get("error")): raise ProviderError("rejected", str((j or {}).get("reason", "Request rejected")) if isinstance(j, dict) else "Request rejected", r.status_code)
-    return j
+    last = None
+    for attempt in range(retries + 1):
+        try:
+            with (_OM if om else contextlib.nullcontext()): r = requests.get(url, params=params, timeout=timeout, headers=headers)
+        except requests.Timeout: last = ProviderError("timeout", "The data provider took too long to respond.", 504)
+        except requests.RequestException: last = ProviderError("network", "The data provider could not be reached.", 503)
+        else:
+            ra = (getattr(r, "headers", None) or {}).get("Retry-After")
+            if r.status_code == 429: last = ProviderError("rate_limited", "The weather provider is limiting requests from this server (shared hosting address).", 429, int(ra) if ra and str(ra).isdigit() else None)
+            elif r.status_code >= 500: last = ProviderError("provider_error", "The data provider reported an internal error.", 502)
+            else:
+                try: j = r.json()
+                except ValueError: last = ProviderError("bad_response", "The data provider returned an unreadable response.", 502)
+                else:
+                    if r.status_code >= 400 or (isinstance(j, dict) and j.get("error")): raise ProviderError("rejected", str((j or {}).get("reason", "Request rejected")) if isinstance(j, dict) else "Request rejected", r.status_code)
+                    return j
+        if attempt < retries and last.kind in RETRYABLE: time.sleep(min(last.retry_after or 0.7*(attempt + 1), 3))
+        else: raise last
+    raise last
 
 def hav(a, b, c, d):
     p = math.pi/180; x = math.sin((c-a)*p/2)**2 + math.cos(a*p)*math.cos(c*p)*math.sin((d-b)*p/2)**2
@@ -64,7 +80,7 @@ def parse_coord(lat, lon):
     return (la, lo) if math.isfinite(la) and math.isfinite(lo) and -90 <= la <= 90 and -180 <= lo <= 180 else None
 
 def init(m):
-    app = m.app; GEO = m.GEO; LOCK = threading.Lock()
+    app = m.app; GEO = m.GEO; LOCK = threading.Lock(); app.config["MAX_CONTENT_LENGTH"] = 2_500_000
     def ip(): return (request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or "?")
     def limited(bucket, limit, window):
         now = time.time(); q = _RL.setdefault((ip(), bucket), []); q[:] = [t for t in q if now - t < window]
@@ -101,7 +117,7 @@ def init(m):
         k = ("geo", q.lower(), count); res = cget(k)
         if res is None:
             try:
-                j = http_json(URL["geo"], {"name": q, "count": count, "language": "en", "format": "json"}, timeout=6)
+                j = http_json(URL["geo"], {"name": q, "count": count, "language": "en", "format": "json"}, timeout=6, retries=1)
                 res = [place(r) for r in (j.get("results") or []) if fin(r.get("latitude")) and fin(r.get("longitude"))]
                 seen = {}
                 for p in res:   # disambiguate duplicate labels
@@ -110,47 +126,94 @@ def init(m):
                     if seen[p["label"]] > 1: p["label"] += f" ({p['admin2']})" if p.get("admin2") and p["admin2"] not in p["label"] else f" ({p['lat']:.2f}, {p['lon']:.2f})"
                 cset(k, res, TTL["geo"])
             except ProviderError as e:
-                b = builtin(q)
-                if b: return jsonify({"results": b, "degraded": True, "message": "The geocoding service is unavailable, so only built-in Delhi NCR areas are shown."})
-                return err("geocoder_unavailable", e.msg + " Please try again shortly.", e.status if e.status in (429, 503, 504) else 503)
+                res = cget(k, stale=True)
+                if res is None:   # the page then looks up places from the visitor's own browser, and only then falls back to built-in demo areas
+                    return jsonify({"error": "rate_limited" if e.kind == "rate_limited" else "geocoder_unavailable", "message": e.msg + " Please try again shortly.", "retryable": e.kind in RETRYABLE, "retry_after": e.retry_after or 5, "builtin": builtin(q)}), (e.status if e.status in (429, 503, 504) else 503)
         return jsonify({"results": res, "degraded": False, "message": "" if res else f"No place found for “{q}”. Check the spelling or try a nearby city."})
 
     # ---------- environmental data ----------
+    def fc_params(la, lo): return {"latitude": la, "longitude": lo, "current": "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m",
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,et0_fao_evapotranspiration", "hourly": "soil_moisture_0_to_7cm", "past_days": 14, "forecast_days": 7, "timezone": "auto"}
+    def arch_params(la, lo):
+        y1 = datetime.datetime.now(datetime.timezone.utc).year - 1
+        return {"latitude": la, "longitude": lo, "start_date": f"{y1 - 9}-01-01", "end_date": f"{y1}-12-31", "daily": "temperature_2m_max,precipitation_sum", "timezone": "auto"}
+    def flood_params(la, lo): return {"latitude": la, "longitude": lo, "daily": "river_discharge", "past_days": 7, "forecast_days": 7}
+    def nums(a, lo, hi, n=None, name="values"):
+        if not isinstance(a, list) or (n is not None and len(a) != n) or len(a) > 5000: raise ValueError(f"{name}: unexpected size")
+        for x in a:
+            if x is not None and (not fin(x) or not lo <= float(x) <= hi): raise ValueError(f"{name}: value out of range")
+        return a
+    def check_fc(j):
+        d = (j or {}).get("daily") if isinstance(j, dict) else None
+        if not isinstance(d, dict): raise ValueError("forecast: missing daily data")
+        t = d.get("time")
+        if not isinstance(t, list) or len(t) != 21: raise ValueError("forecast: expected 21 days")
+        nums(d.get("temperature_2m_max"), -90, 65, 21, "tmax"); nums(d.get("precipitation_sum"), 0, 2000, 21, "rain")
+        for k, lo, hi in (("temperature_2m_min", -90, 65), ("precipitation_probability_max", 0, 100), ("et0_fao_evapotranspiration", 0, 60)):
+            if k in d: nums(d[k], lo, hi, 21, k)
+        h = (j.get("hourly") or {}).get("soil_moisture_0_to_7cm")
+        if h is not None: nums(h, 0, 1, None, "soil moisture")
+        if len(clean(d["temperature_2m_max"][14:])) < 3: raise ValueError("forecast: too few temperature values")
+        try: today = datetime.date.fromisoformat(t[14])
+        except (ValueError, TypeError): raise ValueError("forecast: bad dates")
+        if abs((today - datetime.datetime.now(datetime.timezone.utc).date()).days) > 2: raise ValueError("forecast: data is not current")
+        return j
     def forecast(lat, lon, refresh):
-        k = ("fc", round(lat, 2), round(lon, 2))
+        la, lo = round(lat, 2), round(lon, 2); k = ("fc", la, lo)
         if not refresh and cget(k): return cget(k)
-        j = http_json(URL["fc"], {"latitude": lat, "longitude": lon, "current": "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m",
-            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,et0_fao_evapotranspiration", "hourly": "soil_moisture_0_to_7cm",
-            "past_days": 14, "forecast_days": 7, "timezone": "auto"}, timeout=10)
-        d = j.get("daily") or {}
-        if len(d.get("time", [])) < 21 or len(clean(d.get("temperature_2m_max", [])[14:])) < 3: raise ProviderError("incomplete", "The forecast for this location is incomplete.", 502)
-        cset(k, j, TTL["fc"]); return j
-    def climatology(lat, lon):
-        today = datetime.datetime.now(datetime.timezone.utc).date(); k = ("clim", round(lat, 1), round(lon, 1), today)
-        if cget(k): return cget(k)
-        y1 = today.year - 1; y0 = y1 - 9
-        j = http_json(URL["arch"], {"latitude": lat, "longitude": lon, "start_date": f"{y0}-01-01", "end_date": f"{y1}-12-31", "daily": "temperature_2m_max,precipitation_sum", "timezone": "auto"}, timeout=20)
-        d = j.get("daily") or {}; T, P = {}, {}
-        for t, x, p in zip(d.get("time", []), d.get("temperature_2m_max", []), d.get("precipitation_sum", [])):
-            dt = datetime.date.fromisoformat(t)
-            if fin(x): T[dt] = float(x)
-            if fin(p): P[dt] = float(p)
+        try:
+            j = http_json(URL["fc"], fc_params(la, lo), timeout=10)
+            try: check_fc(j)
+            except ValueError: raise ProviderError("incomplete", "The forecast for this location is incomplete.", 502)
+            j["_fetched"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="minutes"); cset(k, j, TTL["fc"]); return j
+        except ProviderError:
+            st = cget(k, stale=True)
+            if st: return {**st, "_stale": True}
+            raise
+    def normals_from_archive(j, today=None):
+        today = today or datetime.datetime.now(datetime.timezone.utc).date(); d = (j or {}).get("daily") if isinstance(j, dict) else None
+        if not isinstance(d, dict): raise ValueError("archive: missing daily data")
+        t = d.get("time"); n = len(t) if isinstance(t, list) else 0
+        if not 3000 <= n <= 3700: raise ValueError("archive: unexpected length")
+        nums(d.get("temperature_2m_max"), -90, 65, n, "tmax"); nums(d.get("precipitation_sum"), 0, 2000, n, "rain")
+        y1 = today.year - 1; y0 = y1 - 9; T, P = {}, {}
+        try:
+            for tt, x, p in zip(t, d["temperature_2m_max"], d["precipitation_sum"]):
+                dt = datetime.date.fromisoformat(tt)
+                if fin(x): T[dt] = float(x)
+                if fin(p): P[dt] = float(p)
+        except (ValueError, TypeError): raise ValueError("archive: bad dates")
+        if not (y0 - 1 <= min(P or T).year <= y0 + 1 and y1 - 1 <= max(P or T).year <= y1 + 1): raise ValueError("archive: unexpected period")
         tw, rs = [], []
         for y in range(y0, y1 + 1):
             c = datetime.date(y, today.month, min(today.day, 28)); days = [c + datetime.timedelta(i) for i in range(-15, 16)]
             tv = [T[x] for x in days if x in T]; pv = [P[x] for x in days if x in P]
             if len(tv) >= 25 and len(pv) >= 25: tw += tv; rs.append(sum(pv)*31/len(pv))
         ann = [sum(v for dd, v in P.items() if dd.year == y) for y in range(y0, y1 + 1) if sum(1 for dd in P if dd.year == y) >= 330]
-        if len(rs) < 5 or len(tw) < 100: raise ProviderError("incomplete", "Climate normals for this location are incomplete.", 502)
-        out = {"tmax_norm": mean(tw), "rain31_norm": mean(rs), "annual_rain": mean(ann), "years": len(rs), "period": f"{y0}-{y1}"}
-        cset(k, out, TTL["clim"]); return out
+        if len(rs) < 5 or len(tw) < 100: raise ValueError("archive: too few years of data")
+        return {"tmax_norm": mean(tw), "rain31_norm": mean(rs), "annual_rain": mean(ann), "years": len(rs), "period": f"{y0}-{y1}"}
+    def climatology(lat, lon):
+        la, lo = round(lat*4)/4, round(lon*4)/4; k = ("clim", la, lo)   # normals vary slowly: 0.25 degree grid, kept for 7 days
+        if cget(k): return cget(k)
+        try:
+            j = http_json(URL["arch"], arch_params(la, lo), timeout=20)
+            try: out = normals_from_archive(j)
+            except ValueError: raise ProviderError("incomplete", "Climate normals for this location are incomplete.", 502)
+            cset(k, out, TTL["clim"], keep=30*86400); return out
+        except ProviderError:
+            st = cget(k, stale=True)
+            if st: return {**st, "_stale": True}
+            raise
     def flood(lat, lon):
-        k = ("flood", round(lat, 2), round(lon, 2))
+        la, lo = round(lat, 2), round(lon, 2); k = ("flood", la, lo)
         if cget(k) is not None: return cget(k)
-        try: j = http_json(URL["flood"], {"latitude": lat, "longitude": lon, "daily": "river_discharge", "past_days": 7, "forecast_days": 7}, timeout=8)
+        try: j = http_json(URL["flood"], flood_params(la, lo), timeout=8)
         except ProviderError as e:
-            if e.kind in ("rejected",): j = {"daily": {}}
-            else: raise
+            if e.kind == "rejected": j = {"daily": {}}
+            else:
+                st = cget(k, stale=True)
+                if st is not None: return st
+                raise
         cset(k, j, TTL["flood"]); return j
     def bundle(lat, lon, refresh=False):
         out = {}
@@ -159,9 +222,30 @@ def init(m):
             except ProviderError as e: out[n] = e
             except Exception: out[n] = ProviderError("internal", "Unexpected error while reading provider data.", 502)
         ts = [threading.Thread(target=job, args=("fc", forecast, lat, lon, refresh)), threading.Thread(target=job, args=("clim", climatology, lat, lon)), threading.Thread(target=job, args=("flood", flood, lat, lon))]
-        [t.start() for t in ts]; [t.join(25) for t in ts]
+        [t.start() for t in ts]; [t.join(40) for t in ts]
         for k in ("fc", "clim", "flood"): out.setdefault(k, ProviderError("timeout", "The data provider took too long to respond.", 504))
         return out
+    def bundle_from_raw(raw, lat, lon):
+        """Provider data fetched by the visitor's browser (used only when this server is rate limited). It is validated before use."""
+        if not isinstance(raw, dict): raise ValueError("raw: expected an object")
+        fc = raw.get("fc"); check_fc(fc)
+        if not (abs(float(fc.get("latitude", lat)) - lat) < .6 and abs(float(fc.get("longitude", lon)) - lon) < .6): raise ValueError("forecast: coordinates do not match")
+        fc = {**fc, "_fetched": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="minutes")}
+        clim = normals_from_archive(raw.get("arch")); fl = raw.get("flood")
+        if isinstance(fl, dict) and isinstance((fl.get("daily") or {}).get("river_discharge"), list): nums(fl["daily"]["river_discharge"], 0, 1e7, None, "river discharge")
+        else: fl = {"daily": {}}
+        return {"fc": fc, "clim": clim, "flood": fl}
+    def make_token(lat, lon):
+        ts = int(time.time()); return f"{ts}.{hmac.new(SECRET, f'{lat:.3f}|{lon:.3f}|{ts}'.encode(), hashlib.sha256).hexdigest()[:32]}"
+    def token_ok(tok, lat, lon):
+        try: ts, sig = str(tok).split("."); ts = int(ts)
+        except ValueError: return False
+        return 0 <= time.time() - ts <= 900 and hmac.compare_digest(sig, hmac.new(SECRET, f'{lat:.3f}|{lon:.3f}|{ts}'.encode(), hashlib.sha256).hexdigest()[:32])
+    def client_plan(lat, lon):
+        """URLs for the visitor's browser. Never contains an API key."""
+        la, lo = round(lat, 2), round(lon, 2); la4, lo4 = round(lat*4)/4, round(lon*4)/4
+        u = lambda kind, p: requests.Request("GET", URL[kind], params=p).prepare().url
+        return {"fc": u("fc", fc_params(la, lo)), "arch": u("arch", arch_params(la4, lo4)), "flood": u("flood", flood_params(la, lo))}
     def reverse(lat, lon):
         k = ("rev", round(lat, 2), round(lon, 2))
         if cget(k): return cget(k)
@@ -181,7 +265,7 @@ def init(m):
         st = m.GW_STAGE[best[0]]; return {"area": best[0], "stage": st[0], "source": st[1], "dist_km": round(best[1], 1)}
     def imp_pop(pop): return None if not pop else .25 if pop < 5e4 else .40 if pop < 5e5 else .60 if pop < 5e6 else .75
 
-    def derive(lat, lon, pl, b):
+    def derive(lat, lon, pl, b, via="server"):
         """Turn provider data into display data, provenance and model inputs. Raises ProviderError if the model inputs cannot be derived."""
         fc, cl, fl = b["fc"], b["clim"], b["flood"]
         if isinstance(fc, ProviderError): raise fc
@@ -193,7 +277,10 @@ def init(m):
         country = pl.get("country_code"); gwi = gw_near(lat, lon); prov, lim, warn, val = [], [], [], []
         def row(name, value, unit, typ, source, when, note=""): prov.append({"name": name, "value": value, "unit": unit, "type": typ, "source": source, "time": when, "note": note})
         S_FC, S_CL, S_FL = "Open-Meteo forecast API (weather-model analysis and forecast)", "Open-Meteo archive API (ERA5-based reanalysis)", "Open-Meteo Flood API (GloFAS river-discharge model)"
-        ctime = cur.get("time"); data = {"fetched_at": now, "data_time": ctime, "timezone": fc.get("timezone"), "elevation": fc.get("elevation")}
+        ctime = cur.get("time"); data = {"fetched_at": fc.get("_fetched") or now, "data_time": ctime, "timezone": fc.get("timezone"), "elevation": fc.get("elevation"), "via": via}
+        if fc.get("_stale"): warn.append(f"The weather provider is busy, so the last saved forecast for this area (fetched {fc.get('_fetched', 'earlier')}) is shown.")
+        if clim_ok and cl.get("_stale"): warn.append("Climate normals were taken from saved data because the provider is busy.")
+        if via == "browser": warn.append("The weather provider limits this server's shared address, so your browser fetched the data directly. The server validated it before use.")
         if cur: data["current"] = {"temp": cur.get("temperature_2m"), "feels": cur.get("apparent_temperature"), "humidity": cur.get("relative_humidity_2m"), "wind": cur.get("wind_speed_10m"), "precip": cur.get("precipitation"), "units": cu}
         if cur.get("temperature_2m") is not None: row("Current temperature", cur["temperature_2m"], cu.get("temperature_2m", "°C"), "Observed", S_FC, ctime, "Model analysis for the grid cell, not a station reading")
         row("Forecast max temperature (next 7 days)", round(max(t_next), 1), "°C", "Forecast", S_FC, ctime)
@@ -290,12 +377,19 @@ def init(m):
         j = request.get_json(silent=True) or {}; c = parse_coord(j.get("lat"), j.get("lon"))
         if not c: return err("bad_coordinates", "Latitude must be between -90 and 90 and longitude between -180 and 180.", 400)
         if limited("risk", 24, 60): return err("rate_limited", "Too many location requests. Please wait a moment.", 429)
-        lat, lon = c; pl = parse_place(j, lat, lon); label = (str(j.get("name") or "")[:120]).strip()
+        lat, lon = c; pl = parse_place(j, lat, lon); label = (str(j.get("name") or "")[:120]).strip(); raw = j.get("raw"); via = "server"
         if not label:
             rp, label = reverse(lat, lon); pl.update({k: v for k, v in rp.items() if v})
-        b = bundle(lat, lon, bool(j.get("refresh")))
-        try: data, meta = derive(lat, lon, pl, b)
-        except ProviderError as e: return err(e.kind, e.msg + " Please try again.", e.status if e.status in (429, 502, 503, 504) else 502)
+        if raw is not None:
+            if not token_ok(j.get("token"), lat, lon): return err("bad_token", "The browser data was not requested by this server. Please search again.", 403)
+            try: b = bundle_from_raw(raw, lat, lon); via = "browser"
+            except (ValueError, TypeError, AttributeError) as e: return err("bad_raw", "The data fetched by your browser could not be validated (" + str(e) + ").", 400)
+        else: b = bundle(lat, lon, bool(j.get("refresh")))
+        try: data, meta = derive(lat, lon, pl, b, via)
+        except ProviderError as e:
+            body = {"error": e.kind, "message": e.msg + " Please try again.", "retryable": e.kind in RETRYABLE, "retry_after": e.retry_after or 8}
+            if raw is None and e.kind in RETRYABLE: body["client_fetch"] = {"plan": client_plan(lat, lon), "token": make_token(lat, lon)}
+            return jsonify(body), (e.status if e.status in (429, 502, 503, 504) else 502)
         base = {"location": {"label": label, "lat": lat, "lon": lon, "elevation": data.get("elevation") or pl.get("elevation"), "timezone": data.get("timezone"), "country": pl.get("country"), "admin1": pl.get("admin1"), "admin2": pl.get("admin2"), "population": pl.get("population")}, "data": data}
         if meta is None: return jsonify({**base, "risk": None, "unavailable": "Climate normals could not be retrieved for this location, so risk scores are unavailable. Observed and forecast data are shown."})
         label, sc = register(pl, label, data, meta); base["location"]["label"] = label

@@ -52,3 +52,11 @@ The risk map uses OpenStreetMap tiles (no API key), darkened in CSS. Please resp
 ## API keys (summary)
 - **Open-Meteo: no key needed.** Free for non-commercial use (about 10,000 calls a day, attribution required: CC BY 4.0). For commercial use, subscribe at https://open-meteo.com/en/pricing; you receive a key immediately. Put it in `OPEN_METEO_API_KEY`; the app then switches to the `customer-*` hosts automatically.
 - Groq (`GROQ_API_KEY`), AWS (Bedrock, S3, SageMaker, AgentCore) and `MAP_TILE_URL` keys are all optional.
+
+## Provider rate limits (important on Render)
+Open-Meteo's free API limits requests **per server IP address**. Render's free instances share IP addresses with many other apps, so you may see "The data provider is rate limiting requests". The app handles this in four steps:
+1. Fewer calls: coordinates are rounded so nearby searches share a cache entry (normals are kept 7 days on a 0.25 degree grid).
+2. The server retries politely and never makes more than 3 simultaneous Open-Meteo requests.
+3. If a provider still refuses, the last saved data is served (clearly marked "last saved forecast").
+4. If there is nothing saved, the visitor's browser fetches the data directly from Open-Meteo (its own address, own limit) and posts it back. The server only accepts it with a signed one-time token, checks sizes, ranges, dates and coordinates, and marks it "fetched by your browser". Place search falls back the same way (Open-Meteo, then Photon).
+For guaranteed capacity use a paid Open-Meteo key (`OPEN_METEO_API_KEY`, see above) or self-host Open-Meteo. Set `APP_SECRET` if you run more than one worker.

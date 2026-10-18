@@ -563,7 +563,7 @@ def start_background():
     if not _bg["on"]:
         _bg["on"] = True; threading.Thread(target=refresh_loop, daemon=True).start()
 
-start_background()
+if os.getenv("AQUAHEAT_NO_BG") != "1": start_background()   # tests set AQUAHEAT_NO_BG=1
 
 if __name__ == "__main__":
     print("AquaHeat AI running at http://127.0.0.1:5000  (open this in your browser)")

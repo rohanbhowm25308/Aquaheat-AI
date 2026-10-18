@@ -26,3 +26,5 @@ services:
         sync: false
       - key: OPEN_METEO_API_KEY
         sync: false
+      - key: APP_SECRET
+        generateValue: true

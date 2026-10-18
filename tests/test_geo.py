@@ -2,11 +2,13 @@
 (Open-Meteo geocoding, forecast, archive, flood and Nominatim). Run:  python tests/test_geo.py"""
 import os, sys, math, datetime, traceback
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ["AQUAHEAT_NO_BG"] = "1"   # no background refresh thread during tests
 import requests, app, geo
 
-CALLS, FAIL = [], {}
+CALLS, FAIL, ONCE = [], {}, set()
+geo.time.sleep = lambda s: None   # no real waiting in tests
 class R:
-    def __init__(s, code, j): s.status_code, s._j = code, j
+    def __init__(s, code, j, h=None): s.status_code, s._j, s.headers = code, j, (h or {})
     def json(s):
         if s._j is None: raise ValueError("bad json")
         return s._j
@@ -17,9 +19,14 @@ PLACES = {"gurugram": [{"id": 1270642, "name": "Gurugram", "latitude": 28.4601, 
                           {"id": 11, "name": "Springfield", "latitude": 41.84, "longitude": -88.34, "country_code": "US", "country": "United States", "admin1": "Illinois", "admin2": "Kane", "population": 1200, "timezone": "America/Chicago"},
                           {"id": 12, "name": "Springfield", "latitude": 37.21, "longitude": -93.29, "country_code": "US", "country": "United States", "admin1": "Missouri", "admin2": "Greene", "population": 169176, "timezone": "America/Chicago"}]}
 def hot(lat): return 40.0 if lat > 26 else 36.0           # simulated forecast maximum: differs by place so stale data would be detected
-def fake_get(url, params=None, timeout=None, headers=None):
-    p = params or {}; CALLS.append(url.split("/")[2]); kind = ("geo" if "geocoding" in url else "arch" if "archive" in url else "flood" if "flood" in url else "rev" if "nominatim" in url else "fc")
-    f = FAIL.get(kind)
+def fake_get(url, params=None, timeout=None, headers=None, _browser=False):
+    p = params or {}
+    if not _browser: CALLS.append(url.split("/")[2])
+    kind = ("geo" if "geocoding" in url else "arch" if "archive" in url else "flood" if "flood" in url else "rev" if "nominatim" in url else "fc")
+    f = None if _browser else FAIL.get(kind)
+    if f == "429_once":
+        if kind not in ONCE: ONCE.add(kind); return R(429, {"error": True, "reason": "Too many requests"}, {"Retry-After": "0"})
+        f = None
     if f == "timeout": raise requests.Timeout()
     if f == "network": raise requests.ConnectionError()
     if f == "429": return R(429, {"error": True, "reason": "Too many requests"})
@@ -47,7 +54,7 @@ def fake_get(url, params=None, timeout=None, headers=None):
 requests.get = fake_get
 
 def reset():
-    FAIL.clear(); CALLS.clear(); geo._CACHE.clear(); geo._RL.clear()
+    FAIL.clear(); ONCE.clear(); CALLS.clear(); geo._CACHE.clear(); geo._RL.clear()
 C = app.app.test_client(); T = []
 def test(f): T.append(f); return f
 def risk(label, lat, lon, **kw):
@@ -68,8 +75,9 @@ def search_duplicates_are_distinguishable():
 @test
 def search_provider_failures():
     reset(); FAIL["geo"] = "timeout"; r = C.get("/api/locations/search?q=Kolkata"); assert r.status_code in (503, 504) and r.json["error"] and r.json["message"]
-    geo._CACHE.clear(); j = C.get("/api/locations/search?q=Gurugram").json; assert j["degraded"] and j["results"][0]["name"] == "Gurugram"   # built-in fallback
-    FAIL["geo"] = "429"; assert C.get("/api/locations/search?q=Mumbai").status_code == 429
+    assert r.json["retryable"] is True and r.json["builtin"] == []
+    geo._CACHE.clear(); j = C.get("/api/locations/search?q=Gurugram").json; assert j["retryable"] and j["builtin"][0]["name"] == "Gurugram"   # the page tries the browser first, then these built-in areas
+    FAIL["geo"] = "429"; r2 = C.get("/api/locations/search?q=Mumbai"); assert r2.status_code == 429 and r2.json["error"] == "rate_limited" and r2.json["retryable"]
     FAIL["geo"] = "garbage"; assert C.get("/api/locations/search?q=Delhi2").status_code in (502, 503)
 @test
 def search_rate_limit():
@@ -135,8 +143,11 @@ def unknown_location_is_404_not_gurugram():
     assert all(C.get(u).status_code == 404 for u in for_u) and C.post("/api/simulate", json={"loc": "Atlantis"}).status_code == 404 and C.post("/api/agent", json={"loc": "Atlantis"}).status_code == 404
 @test
 def caching_and_refresh():
-    reset(); risk("Gurugram, Haryana, India", 28.4601, 77.02635); n1 = len(CALLS); risk("Gurugram, Haryana, India", 28.4601, 77.02635); assert len(CALLS) == n1, "cache miss"
-    risk("Gurugram, Haryana, India", 28.4601, 77.02635, refresh=True); assert len(CALLS) > n1   # refresh re-fetches the forecast
+    reset(); JA = ("Jaipur, Rajasthan, India", 26.9124, 75.7873)
+    risk(*JA); n1 = len(CALLS); assert n1 >= 3, "first request should reach the providers"
+    risk(*JA); assert len(CALLS) == n1, "second request must be served from the cache"
+    risk(*JA, refresh=True); assert len(CALLS) == n1 + 1, "refresh re-fetches only the forecast (normals and river data stay cached)"
+
 @test
 def use_my_location_reverse_label():
     reset(); j = C.post("/api/location-risk", json={"lat": 28.46, "lon": 77.03}).json; assert j["location"]["label"] == "Faketown, Haryana, India"
@@ -169,6 +180,49 @@ def paid_key_uses_customer_hosts_and_free_mode_does_not():
         assert all(p.get("apikey") == "abc123" for u, p in seen[n0:] if "open-meteo" in u)
     finally:
         requests.get = orig; os.environ.pop("OPEN_METEO_API_KEY", None)
+
+import urllib.parse as up
+def fake_from_url(u):
+    pu = up.urlparse(u); params = {k: v[0] for k, v in up.parse_qs(pu.query).items()}
+    return fake_get(f"{pu.scheme}://{pu.netloc}{pu.path}", params).json()
+LAB = "Kolkata, West Bengal, India"
+
+@test
+def a_single_429_is_retried_and_recovers():
+    reset(); FAIL["fc"] = "429_once"; r = risk("Gurugram, Haryana, India", 28.4601, 77.02635, pop=876969)
+    assert r.status_code == 200 and r.json["risk"] and r.json["data"]["via"] == "server" and not any("saved forecast" in w for w in r.json["data"]["warnings"])
+
+@test
+def saved_data_is_served_when_the_provider_rate_limits():
+    reset(); a = risk(LAB, 22.5626, 88.363, pop=4631392).json; assert a["risk"]
+    for k in ("fc", "arch", "flood"): FAIL[k] = "429"
+    b = risk(LAB, 22.5626, 88.363, pop=4631392, refresh=True)
+    assert b.status_code == 200 and b.json["risk"] and any("last saved forecast" in w for w in b.json["data"]["warnings"]), b.json.get("error")
+
+@test
+def browser_fallback_when_the_server_is_rate_limited():
+    reset(); FAIL["fc"] = FAIL["arch"] = FAIL["flood"] = "429"
+    r = risk(LAB, 22.5626, 88.363, pop=4631392); assert r.status_code == 429 and r.json["retryable"] and "client_fetch" in r.json, r.json
+    cf = r.json["client_fetch"]; assert set(cf["plan"]) == {"fc", "arch", "flood"} and all(u.startswith("https://") and "apikey" not in u for u in cf["plan"].values())
+    FAIL.clear(); raw = {k: fake_from_url(u) for k, u in cf["plan"].items()}
+    body = {"lat": 22.5626, "lon": 88.363, "name": LAB, "country_code": "IN", "population": 4631392}
+    ok = C.post("/api/location-risk", json={**body, "raw": raw, "token": cf["token"]}); assert ok.status_code == 200 and ok.json["risk"] and ok.json["data"]["via"] == "browser" and any("browser fetched" in w for w in ok.json["data"]["warnings"])
+    assert C.post("/api/location-risk", json={**body, "raw": raw, "token": "1.abc"}).status_code == 403, "forged token"
+    assert C.post("/api/location-risk", json={**body, "raw": raw}).status_code == 403, "raw data without a token"
+    assert C.post("/api/location-risk", json={**body, "lat": 10.0, "raw": raw, "token": cf["token"]}).status_code == 403, "token for other coordinates"
+    bad = {**raw, "fc": {**raw["fc"], "daily": {**raw["fc"]["daily"], "temperature_2m_max": raw["fc"]["daily"]["temperature_2m_max"][:15] + [999.0] + raw["fc"]["daily"]["temperature_2m_max"][16:]}}}
+    tok = cf["token"]
+    assert C.post("/api/location-risk", json={**body, "raw": bad, "token": tok}).status_code == 400, "implausible temperature must be rejected"
+    old = {**raw, "arch": {"daily": {"time": raw["arch"]["daily"]["time"][:100], "temperature_2m_max": [30.0]*100, "precipitation_sum": [1.0]*100}}}
+    assert C.post("/api/location-risk", json={**body, "raw": old, "token": tok}).status_code == 400, "truncated climate data must be rejected"
+
+@test
+def the_browser_plan_never_contains_an_api_key():
+    reset(); os.environ["OPEN_METEO_API_KEY"] = "secret123"; FAIL["fc"] = "429"
+    try:
+        plan = risk(LAB, 22.5626, 88.363).json["client_fetch"]["plan"]
+        assert all("secret123" not in u and "apikey" not in u and "customer-" not in u for u in plan.values()), plan
+    finally: os.environ.pop("OPEN_METEO_API_KEY", None)
 
 @test
 def risk_rate_limit():

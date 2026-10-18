@@ -14,13 +14,28 @@ function renderList(q,res){gl.innerHTML='';
   li.innerHTML=`<span class="ic" aria-hidden="true">📍</span><span class="t"><b>${esc(p.name)}</b><span>${esc(sub)}</span><span style="display:block;font-size:12px">${esc(extra)}</span></span>`;li.onmousedown=e=>{e.preventDefault();pick(p)};gl.appendChild(li)});
  gl.hidden=false;gq.setAttribute('aria-expanded','true')}
 function setAct(i){const lis=[...gl.querySelectorAll('li[role=option]')];if(!lis.length)return;gact=(i+lis.length)%lis.length;lis.forEach((l,k)=>l.setAttribute('aria-selected',k==gact));gq.setAttribute('aria-activedescendant',lis[gact].id);lis[gact].scrollIntoView({block:'nearest'})}
-async function gsearch(q,enter){const my=++greq;if(gctl)gctl.abort();gctl=new AbortController();gspin(true);
- try{const r=await fetch('/api/locations/search?q='+enc(q),{signal:gctl.signal});let j={};try{j=await r.json()}catch(e){}
-  if(my!=greq)return;
-  if(!r.ok){gitems=[];closeList();gmsg(j.message||'Location search is unavailable. Please try again.',true,()=>gsearch(q));return}
-  gitems=j.results||[];glastQ=q;gmsg(j.degraded?j.message:'',false);renderList(q,gitems);if(enter&&gitems.length===1)pick(gitems[0])}
- catch(e){if(e.name==='AbortError')return;if(my==greq){gitems=[];closeList();gmsg('Could not reach the server. Check your connection and try again.',true,()=>gsearch(q))}}
- finally{if(my==greq)gspin(false)}}
+/* ---------- search: server first, then this browser (Open-Meteo, then Photon) when the server is rate limited ---------- */
+const OM_GEO='https://geocoding-api.open-meteo.com/v1/search',H={'Content-Type':'application/json'};
+const labelOf=p=>[p.name,p.admin1,p.country].filter((x,i,a)=>x&&a.indexOf(x)===i).join(', ');
+const omPlace=r=>({id:r.id,name:r.name,admin1:r.admin1,admin2:r.admin2,country:r.country,country_code:r.country_code,lat:+r.latitude,lon:+r.longitude,elevation:r.elevation,population:r.population,timezone:r.timezone,feature:r.feature_code,label:labelOf(r)});
+const phPlace=f=>{const p=f.properties||{},c=(f.geometry||{}).coordinates;if(!c||!p.name)return null;const o={id:p.osm_id,name:p.name,admin1:p.state,admin2:p.county||p.district,country:p.country,country_code:(p.countrycode||'').toUpperCase()||null,lat:+c[1],lon:+c[0],elevation:null,population:null,timezone:null,feature:p.osm_value};o.label=labelOf(o);return o};
+function dedupeLabels(list){const seen={};list.forEach(p=>seen[p.label]=(seen[p.label]||0)+1);const keys=new Set(),out=[];list.forEach(p=>{if(seen[p.label]>1)p.label+=p.admin2&&!p.label.includes(p.admin2)?` (${p.admin2})`:` (${p.lat.toFixed(2)}, ${p.lon.toFixed(2)})`;if(isFinite(p.lat)&&isFinite(p.lon)&&!keys.has(p.label)){keys.add(p.label);out.push(p)}});return out}
+async function browserGeocode(q,signal){let res=[];
+ try{const r=await fetch(`${OM_GEO}?name=${enc(q)}&count=8&language=en&format=json`,{signal});if(r.ok){const j=await r.json();res=(j.results||[]).map(omPlace)}}catch(e){if(e.name==='AbortError')throw e}
+ if(!res.length){try{const r=await fetch(`https://photon.komoot.io/api/?q=${enc(q)}&limit=8&lang=en&layer=city&layer=locality&layer=district&layer=county&layer=state`,{signal});if(r.ok){const j=await r.json();res=(j.features||[]).map(phPlace).filter(Boolean)}}catch(e){if(e.name==='AbortError')throw e}}
+ return dedupeLabels(res)}
+async function gsearch(q,enter){const my=++greq;if(gctl)gctl.abort();gctl=new AbortController();const sig=gctl.signal;gspin(true);
+ const useList=(list,msg)=>{gitems=list;glastQ=q;gmsg(msg||'',false);renderList(q,gitems);if(enter&&gitems.length===1)pick(gitems[0])};
+ try{let r=null,j={};try{r=await fetch('/api/locations/search?q='+enc(q),{signal:sig});try{j=await r.json()}catch(e){}}catch(e){if(e.name==='AbortError')return}
+  if(my!==greq)return;
+  if(r&&r.ok&&(j.results||[]).length){useList(j.results,j.degraded?j.message:'');return}
+  const alt=await browserGeocode(q,sig);if(my!==greq)return;
+  if(alt.length){useList(alt,r&&r.ok?'':'The server is busy, so places were looked up from your browser.');return}
+  if(r&&r.ok){useList([],'');return}
+  if(j.builtin&&j.builtin.length){useList(j.builtin,'Place search is unavailable right now, so only the built-in demo areas are shown.');return}
+  gitems=[];closeList();gmsg(r?(j.message||'Location search is unavailable. Please try again.'):'Could not reach the server. Check your connection and try again.',true,()=>gsearch(q))}
+ catch(e){if(e.name==='AbortError')return;if(my===greq){gitems=[];closeList();gmsg('Location search failed. Please try again.',true,()=>gsearch(q))}}
+ finally{if(my===greq)gspin(false)}}
 gq.addEventListener('input',()=>{clearTimeout(gdeb);const q=gq.value.trim();$('gclr').hidden=!gq.value;if(q.length<2){gitems=[];closeList();gmsg('');if(gctl)gctl.abort();gspin(false);return}gdeb=setTimeout(()=>gsearch(q),250)});
 gq.addEventListener('keydown',e=>{
  if(e.key==='ArrowDown'){e.preventDefault();if(gl.hidden&&gitems.length){gl.hidden=false;gq.setAttribute('aria-expanded','true')}setAct(gact+1)}
@@ -41,16 +56,28 @@ function busyOn(label){secs().forEach(s=>s.classList.add('updating'));gspin(true
 function busyOff(){secs().forEach(s=>s.classList.remove('updating'));gspin(false)}
 function setNA(j){document.body.classList.add('geo-na');const b=$('gbanner');b.hidden=false;b.textContent=j.unavailable||'Risk scoring is unavailable for this location.'}
 function clearNA(){document.body.classList.remove('geo-na');$('gbanner').hidden=true}
-async function loadGeo(p,refresh){const my=++GEOS.seq,label=p.label||'your location';busyOn(label);
- try{const r=await fetch('/api/location-risk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:p.lat,lon:p.lon,name:p.label||undefined,admin1:p.admin1,admin2:p.admin2,country:p.country,country_code:p.country_code,population:p.population,elevation:p.elevation,timezone:p.timezone,refresh:!!refresh})});
-  let j={};try{j=await r.json()}catch(e){}
+const placeBody=p=>({lat:p.lat,lon:p.lon,name:p.label||undefined,admin1:p.admin1,admin2:p.admin2,country:p.country,country_code:p.country_code,population:p.population,elevation:p.elevation,timezone:p.timezone});
+function finishGeo(j,p){GEOS.p={...p,label:j.location.label};GEOS.last=j;GEOS.fetched=Date.now();gmsg('');
+ if(j.risk){GEOLIST.delete(j.risk.name);GEOLIST.set(j.risk.name,{risk:j.risk,p:GEOS.p});while(GEOLIST.size>8)GEOLIST.delete(GEOLIST.keys().next().value)}
+ if(!j.risk){GEOS.cur=null;setNA(j);renderPanel(j);renderChip(j);busyOff();return}
+ clearNA();GEOS.cur=j.risk;renderPanel(j);renderChip(j);show(j.risk);busyOff();
+ setTimeout(()=>{const e=$('dash');if(e&&e.getBoundingClientRect().top<-200)e.scrollIntoView({behavior:'smooth'})},50)}
+function failGeo(msg,p,refresh){busyOff();$('gpanel').hidden=!GEOS.last;if(GEOS.last)renderPanel(GEOS.last);gmsg(msg,true,()=>loadGeo(p,refresh,0))}
+async function loadGeo(p,refresh,tries=0){const my=++GEOS.seq,label=p.label||'your location';busyOn(label);
+ try{const r=await fetch('/api/location-risk',{method:'POST',headers:H,body:JSON.stringify({...placeBody(p),refresh:!!refresh})});let j={};try{j=await r.json()}catch(e){}
   if(my!==GEOS.seq)return;   // a newer search superseded this response
-  if(!r.ok){busyOff();$('gpanel').hidden=!GEOS.last;if(GEOS.last)renderPanel(GEOS.last);gmsg(j.message||'Could not load data for this location.',true,()=>loadGeo(p,refresh));return}
-  GEOS.p={...p,label:j.location.label};GEOS.last=j;GEOS.fetched=Date.now();gmsg('');if(j.risk){GEOLIST.delete(j.risk.name);GEOLIST.set(j.risk.name,{risk:j.risk,p:GEOS.p});while(GEOLIST.size>8)GEOLIST.delete(GEOLIST.keys().next().value)}
-  if(!j.risk){GEOS.cur=null;setNA(j);renderPanel(j);renderChip(j);busyOff();return}
-  clearNA();GEOS.cur=j.risk;renderPanel(j);renderChip(j);show(j.risk);busyOff();
-  setTimeout(()=>{const e=$('dash');if(e&&e.getBoundingClientRect().top<-200)e.scrollIntoView({behavior:'smooth'})},50)}
- catch(e){if(my===GEOS.seq){busyOff();if(GEOS.last)renderPanel(GEOS.last);else $('gpanel').hidden=true;gmsg('Could not reach the server. Check your connection and try again.',true,()=>loadGeo(p,refresh))}}}
+  if(r.ok){finishGeo(j,p);return}
+  if(j.client_fetch){await geoDirect(p,j.client_fetch,my,refresh);return}
+  if(j.retryable&&tries<1){const s=Math.min(j.retry_after||6,12);gmsg((j.message||'The data provider is busy.')+' Retrying in '+s+' s…',true);setTimeout(()=>{if(my===GEOS.seq)loadGeo(p,refresh,tries+1)},s*1000);return}
+  failGeo(j.message||'Could not load data for this location.',p,refresh)}
+ catch(e){if(my===GEOS.seq)failGeo('Could not reach the server. Check your connection and try again.',p,refresh)}}
+/* The server's shared hosting address is rate limited by Open-Meteo: fetch the same data from this browser (its own IP), then let the server validate it. */
+async function geoDirect(p,cf,my,refresh){gmsg('The weather provider is limiting this server, so your browser is fetching the data directly…');
+ const get=async(u,req)=>{for(let a=0;a<3;a++){try{const r=await fetch(u);if(r.ok)return await r.json();if(r.status!==429&&r.status<500)break}catch(e){}await new Promise(s=>setTimeout(s,1500*(a+1)))}if(req)throw new Error('provider');return null};
+ try{const[fc,arch,fl]=await Promise.all([get(cf.plan.fc,true),get(cf.plan.arch,true),get(cf.plan.flood,false)]);if(my!==GEOS.seq)return;
+  const r=await fetch('/api/location-risk',{method:'POST',headers:H,body:JSON.stringify({...placeBody(p),raw:{fc,arch,flood:fl},token:cf.token})});let j={};try{j=await r.json()}catch(e){}
+  if(my!==GEOS.seq)return;if(r.ok){finishGeo(j,p);return}throw new Error(j.message||'rejected')}
+ catch(e){if(my!==GEOS.seq)return;failGeo('The weather provider is busy for both this server and your browser. Please try again in a minute.',p,refresh)}}
 /* ---------- selected-location indicator + freshness ---------- */
 function ago2(ms){const m=Math.round(ms/60000);return m<1?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago'}
 function updFresh(){const e=$('gfresh');if(!e||!GEOS.fetched)return;const age=Date.now()-GEOS.fetched;e.textContent='Updated '+ago2(age)+(age>20*60000?' · data may be out of date, please refresh':'');e.style.color=age>20*60000?'#ffb347':''}
