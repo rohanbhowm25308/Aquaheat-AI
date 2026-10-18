@@ -1,62 +1,462 @@
-# AquaHeat AI
-Run: `run.bat` (Windows) or `sh run.sh`, then open http://127.0.0.1:5000 (do not double-click index.html).
+#  AquaHeat AI
 
-## Honest scope
-- Prototype ML model trained on simulated environmental stress data, designed to be replaceable with live datasets.
-- Default mode is a demo scenario (peak heat stress). `USE_LIVE_DATA=1` blends real Open-Meteo temperature/rainfall into the inputs; vegetation, demand and density remain modelled.
-- The 30-day view is a scenario-based risk projection, not a weather forecast.
+### Predict Heat. Protect Water. Prevent Crisis.
 
-## AI layer
-Amazon Bedrock (Converse API, default model amazon.nova-lite-v1:0) -> Groq -> offline template.
-Enable Bedrock model access in the AWS console, then put AWS credentials in `.env`.
+**An AI-powered environmental intelligence platform connecting heat-risk analysis, water resilience, and interactive climate simulations.**
 
-## Data and AWS
-- Fetch (Open-Meteo) -> Amazon S3 (`raw/`, `processed/`; local `./data` mirror if S3_BUCKET is empty) -> processing -> ML ensemble -> Amazon Bedrock -> agent -> dashboard.
-- Vegetation is a soil-moisture/ET proxy when live, not NDVI. Water demand is a modelled estimate.
-- Confidence = share of 240 ensemble x input-uncertainty draws that keep the same risk level.
-- Demo: open http://127.0.0.1:5000/?demo=1 to auto-play the 30-second guided demo.
+\<p align="center">
+&#x20; \<a href="[https://aquaheat-ai.onrender.com/](https://aquaheat-ai.onrender.com/)">\<strong>🚀 Live Demo\</strong>\</a> •
+&#x20; \<a href="[https://github.com/rohanbhowm25308/Aquaheat-AI](https://github.com/rohanbhowm25308/Aquaheat-AI)">\<strong>💻 Source Code\</strong>\</a>
+\</p>
 
-## SageMaker, Bedrock and methodology
-- `python aws/deploy.py --role <arn> --bucket <bucket>` deploys the Nexus model as a SageMaker real-time endpoint; set `SAGEMAKER_ENDPOINT` in `.env`. If unset or unreachable the local model is used.
-- The agent calls the Amazon Bedrock Converse API directly (not Bedrock Agents Classic).
-- Open `/methodology` for data sources, model information and limitations.
-- Rainfall slider fix: it now sends the % change in rainfall (negative = drier = higher risk).
+\<p align="center">
+&#x20; \<img src="[https://img.shields.io/badge/AI-Environmental%20Intelligence-00C9D8?style=for-the-badge](https://img.shields.io/badge/AI-Environmental%20Intelligence-00C9D8?style=for-the-badge)" alt="Environmental Intelligence">
+&#x20; \<img src="[https://img.shields.io/badge/ML-scikit--learn-orange?style=for-the-badge](https://img.shields.io/badge/ML-scikit--learn-orange?style=for-the-badge)" alt="Machine Learning">
+&#x20; \<img src="[https://img.shields.io/badge/Backend-Flask-black?style=for-the-badge](https://img.shields.io/badge/Backend-Flask-black?style=for-the-badge)" alt="Flask">
+&#x20; \<img src="[https://img.shields.io/badge/Cloud-AWS-FF9900?style=for-the-badge](https://img.shields.io/badge/Cloud-AWS-FF9900?style=for-the-badge)" alt="AWS">
+\</p>
 
-## Amazon Bedrock AgentCore
-`pip install -r agentcore/requirements.txt`, then `agentcore configure -e agentcore/agent.py` and `agentcore launch`. Put the agent ARN in `.env` as `AGENTCORE_RUNTIME_ARN`; the Flask app then calls the hosted agent via `invoke_agent_runtime` (order: AgentCore, Bedrock, Groq, offline). Use a recent boto3 (`pip install -U boto3`).
+---
 
-## Water-demand data
-Reported Gurugram figures (GMDA/MCG via press) are in `/api/waterref` and on the Methodology page. They are press-reported, not meter data. Live mode anchors the Gurugram-area demand input to them; other locations remain modelled.
+##  About the Project
 
-## Eight feature modules
-City Survival Twin (`/api/twin`), Heat-Water Nexus with separate heat, flood and scarcity scores, AI Resilience Action Plan (`/api/actions`), What-If simulator (`/api/simulate`), Rainwater and flood-to-resource optimizer (`/api/harvest`), Water and leak intelligence (`/api/water`, `/api/anomaly`), Community alerts and reports (`/api/alerts`, `/api/reports`), Trust and explainability center (`/api/trust`). New endpoints live in `extras.py`.
-- The model now has 5 inputs (groundwater stress added). If you deployed a SageMaker endpoint earlier, redeploy it with `python aws/deploy.py` so it matches.
-- Community reports are saved to `data/reports.json` (temporary storage on Render).
+**What if we could understand the risks of flooding, extreme heat, and water scarcity together instead of treating them as separate problems?**
 
-## Smart location search
-Search any place (Open-Meteo geocoding), then every dashboard section uses that place: `GET /api/locations/search?q=`, `GET /api/location-data?lat=&lon=`, `POST /api/location-risk`. Code: `geo.py`, `static/geo.js`.
-- Data: Open-Meteo forecast (current, last 14 days, next 7 days), archive (10-year normals), flood (river discharge); Nominatim for "Use my location" labels. No API key is needed. `OPEN_METEO_API_KEY` (optional) stays server-side.
-- Searched locations are held in server memory (up to 40, oldest evicted). If the server restarts, the page asks you to search again (404 `unknown_location`); it never falls back to another city.
-- Model inputs are checked against the training ranges and clipped values are flagged. Groundwater is real only near the CGWB reference areas; elsewhere it is reported as unavailable and a neutral value is used with wider uncertainty.
-- Tests: `python tests/test_geo.py` (simulated providers). Try the UI without internet: `python tests/serve_fake.py` then open http://127.0.0.1:5055.
+Cities face increasingly interconnected environmental challenges. Heavy rainfall can cause flooding, prolonged dry periods can contribute to water shortages, and extreme heat can increase water demand when resources are already under pressure.
 
-## How the page behaves
-1. On load nothing is selected: only the search bar, a "Demo data" button and a welcome card are shown.
-2. **Search a place** (any city, district or locality): every section shows that place with real forecast data. Demo areas are not mixed in. Places searched in the same session are compared in the City Twin and shown on the map.
-3. **Demo data**: pick Gurugram, Sector 57, Delhi, Noida, Faridabad, Manesar, Sohna or Dwarka. These are simulated Delhi NCR scenarios (the Demo/Live toggle appears only here).
-4. Clicking a nav link before choosing either shows a hint instead of an empty section. "Use demo scenario" returns to demo data.
+**AquaHeat AI** is a personal AI and machine-learning project designed to explore these connections through an interactive environmental intelligence platform.
 
-## Map tiles
-The risk map uses OpenStreetMap tiles (no API key), darkened in CSS. Please respect the OSM tile usage policy; for heavy use set `MAP_TILE_URL` (and `MAP_TILE_ATTRIBUTION`, `MAP_TILE_DARKEN`) to a provider you have an account with. Keys in a tile URL are visible to browsers, so restrict them to your domain. The previous CARTO dark tiles now require an API key and were removed.
+It brings together environmental indicators, model-based risk assessment, scenario simulation, and potential resilience strategies in one place.
 
-## API keys (summary)
-- **Open-Meteo: no key needed.** Free for non-commercial use (about 10,000 calls a day, attribution required: CC BY 4.0). For commercial use, subscribe at https://open-meteo.com/en/pricing; you receive a key immediately. Put it in `OPEN_METEO_API_KEY`; the app then switches to the `customer-*` hosts automatically.
-- Groq (`GROQ_API_KEY`), AWS (Bedrock, S3, SageMaker, AgentCore) and `MAP_TILE_URL` keys are all optional.
+The goal is to help users explore environmental conditions, understand estimated risks, compare hypothetical scenarios, and investigate possible ways to improve heat and water resilience.
 
-## Provider rate limits (important on Render)
-Open-Meteo's free API limits requests **per server IP address**. Render's free instances share IP addresses with many other apps, so you may see "The data provider is rate limiting requests". The app handles this in four steps:
-1. Fewer calls: coordinates are rounded so nearby searches share a cache entry (normals are kept 7 days on a 0.25 degree grid).
-2. The server retries politely and never makes more than 3 simultaneous Open-Meteo requests.
-3. If a provider still refuses, the last saved data is served (clearly marked "last saved forecast").
-4. If there is nothing saved, the visitor's browser fetches the data directly from Open-Meteo (its own address, own limit) and posts it back. The server only accepts it with a signed one-time token, checks sizes, ranges, dates and coordinates, and marks it "fetched by your browser". Place search falls back the same way (Open-Meteo, then Photon).
-For guaranteed capacity use a paid Open-Meteo key (`OPEN_METEO_API_KEY`, see above) or self-host Open-Meteo. Set `APP_SECRET` if you run more than one worker.
+> **Too Much Water. Too Little Water. AI for the Balance in Between.**
+
+##  Live Application
+
+Experience AquaHeat AI here:
+
+**🌐 Live Demo:** [https://aquaheat-ai.onrender.com/](https://aquaheat-ai.onrender.com/)
+
+**💻 GitHub Repository:** [https://github.com/rohanbhowm25308/Aquaheat-AI](https://github.com/rohanbhowm25308/Aquaheat-AI)
+
+Open the application to explore the dashboard, available location data, environmental risk indicators, and interactive simulation features.
+
+---
+
+## ✨ Key Features
+
+###  1. Heat–Water Nexus Risk Intelligence
+
+Explore the relationship between extreme heat and water-related environmental stress.
+
+- Combined Heat–Water Nexus risk score.
+- Separate heat, flood, and water-scarcity indicators.
+- Environmental risk-factor analysis.
+- Model-based estimates and uncertainty information.
+- Scenario comparisons to explore changing environmental conditions.
+
+The Nexus score is an experimental decision-support indicator, not an official government risk rating.
+
+###  2. Smart Location Search
+
+Explore environmental information for supported locations.
+
+- Search for cities, districts, and localities.
+- Retrieve available location and weather information.
+- Update the dashboard based on the selected location.
+- Explore location-related risk estimates.
+- Handle unavailable data and incomplete geographic coverage.
+
+Location search and environmental data availability depend on the configured providers. A weather result does not automatically represent verified local flood or groundwater conditions.
+
+###  3. City Survival Twin
+
+Explore a virtual environmental scenario for understanding urban climate and water stress.
+
+- Examine heat and water-related indicators.
+- Explore hypothetical environmental changes.
+- Compare baseline and alternative scenarios.
+- Investigate possible resilience measures.
+
+The City Survival Twin is a simulation and decision-support concept, not a fully surveyed digital replica of a real city.
+
+###  4. What-If Climate Simulator
+
+Explore how environmental risk estimates respond when conditions change.
+
+Experiment with variables such as:
+
+- Temperature
+- Rainfall
+- Water demand
+- Groundwater stress
+
+Compare baseline and adjusted scenarios to investigate changes in estimated heat, flood, and water-scarcity risks.
+
+Example scenarios include extreme heat, heavy rainfall, drought, and water conservation.
+
+###  5. AI Environmental Decision Support
+
+Explore environmental questions and possible responses through the AI assistance layer.
+
+Example questions include:
+
+- Why is the environmental risk score high?
+- What measures could help during a heatwave?
+- How can water consumption be reduced?
+- What strategies could help prepare for water shortages?
+
+Depending on the active configuration, the application can use an external AI provider or offline response templates.
+
+AI-generated suggestions are intended to support exploration and should not replace expert advice or official emergency guidance.
+
+###  6. AI Resilience Action Plans
+
+Explore possible strategies for improving heat and water resilience.
+
+Potential actions include:
+
+- Water conservation and leak repair.
+- Rainwater harvesting.
+- Urban shade and green infrastructure.
+- Heatwave preparedness.
+- Water-resource planning.
+
+The suggested measures depend on the available information and the scenario being explored.
+
+###  7. Water Stress & Leak Intelligence
+
+Investigate water-related challenges through available indicators and reporting features.
+
+- Groundwater-stress indicators.
+- Water-shortage reports.
+- Community leak reports.
+- Tanker-related reporting.
+- Water-consumption anomaly checks where meter readings are supplied.
+
+The reliability of these features depends on the data available. Demonstration reports and modelled values should not be confused with independently verified utility records.
+
+###  8. Rainwater Harvesting & Flood-to-Resource Analysis
+
+Explore the potential of using rainwater as a resource.
+
+- Estimate potential rainwater collection.
+- Investigate storage requirements.
+- Explore water-budget scenarios.
+- Compare hypothetical water-stress outcomes.
+- Examine potential flood-mitigation measures.
+
+Results are estimates based on supplied inputs and assumptions, not guaranteed real-world outcomes.
+
+###  9. Environmental Alerts & Community Insights
+
+Explore features designed to support environmental awareness.
+
+- Environmental precautions and alerts.
+- Community issue reporting.
+- Water-shortage and leak reports.
+- Environmental crisis summaries.
+- Water-conservation insights.
+
+Availability depends on the application's configuration and data sources. Browser notifications may require user permission.
+
+###  10. Trust & Explainability Center
+
+Transparency is an important part of environmental AI.
+
+The platform's methodology section helps users understand:
+
+- Environmental inputs and data sources.
+- Risk-score calculations.
+- Model uncertainty.
+- Simulated versus observed information.
+- Limitations of experimental predictions.
+
+**The objective is not simply to produce a score, but to make its meaning and limitations easier to understand.**
+
+---
+
+##  How It Works
+
+AquaHeat AI combines environmental information, machine-learning-based estimates, and interactive scenario analysis.
+
+```text
+User
+  │
+  ▼
+AquaHeat AI Dashboard
+  │
+  ├── Location Search
+  │      └── Geocoding and Available Weather Data
+  │
+  ├── Environmental Input Processing
+  │
+  ├── Machine-Learning Risk Assessment
+  │      ├── Heat Risk
+  │      ├── Flood-Risk Index
+  │      ├── Water-Scarcity Risk
+  │      └── Heat–Water Nexus Score
+  │
+  ├── What-If Climate Simulator
+  │
+  ├── AI Decision Support
+  │
+  └── Environmental Insights and Action Suggestions
+
+Optional Cloud Infrastructure
+  ├── Amazon S3
+  ├── Amazon SageMaker
+  └── Amazon Bedrock
+```
+
+Optional cloud services require their corresponding configuration, permissions, and deployed resources. The diagram describes the architecture and possible integrations, not a guarantee that every service is active in the live deployment.
+
+---
+
+##  Technology Stack
+
+| Technology            | Purpose                                     |
+| --------------------- | ------------------------------------------- |
+| Python                | Application logic and model processing      |
+| Flask                 | Backend web application                     |
+| scikit-learn          | Machine-learning risk estimation            |
+| NumPy                 | Numerical processing                        |
+| HTML, CSS, JavaScript | Frontend interface and interactivity        |
+| Open-Meteo            | Geocoding and available weather information |
+| Amazon S3             | Optional environmental-data storage         |
+| Amazon SageMaker      | Optional hosted ML inference                |
+| Amazon Bedrock        | Optional AI-powered responses               |
+| Groq                  | Optional AI provider                        |
+| Gunicorn              | Production application server               |
+| Render                | Live application hosting                    |
+
+The exact active stack depends on the current application configuration.
+
+---
+
+##  Machine-Learning Approach
+
+The prototype uses a **Gradient Boosting Regressor** and an ensemble of models to estimate environmental stress.
+
+The model's simulated environmental inputs include:
+
+- Temperature stress.
+- Rainfall deficit.
+- Water demand.
+- Vegetation cover.
+- Groundwater depletion.
+
+The application also uses derived indicators and rule-based calculations to explore flood-related risk.
+
+### Model Uncertainty
+
+Agreement across ensemble models and input-uncertainty scenarios can be used to estimate model consistency.
+
+This is not equivalent to a guarantee that a prediction is accurate.
+
+### Important Model Limitation
+
+The current prototype uses simulated training data, and its internal hold-out evaluation uses data generated by the same simulated process.
+
+Therefore, its evaluation does not establish real-world forecasting accuracy.
+
+Further development would require appropriate observed datasets, independent validation, geographic calibration, and testing against historical environmental events before the estimates could be relied upon for real-world decisions.
+
+---
+
+##  Environmental Data & Limitations
+
+AquaHeat AI combines available environmental inputs with derived indicators and model-generated estimates.
+
+| Information                    | Purpose                                                  |
+| ------------------------------ | -------------------------------------------------------- |
+| Temperature and rainfall       | Environmental inputs                                     |
+| Weather forecasts              | Explore upcoming weather conditions where available      |
+| Groundwater references         | Provide context where suitable reference data exists     |
+| Water-demand indicators        | Explore potential water stress                           |
+| Heat and water-scarcity scores | Model-generated risk estimates                           |
+| Flood-risk index               | Estimate flood-related stress from configured indicators |
+| Climate scenarios              | Compare hypothetical environmental changes               |
+
+Data coverage varies by location. Some values may be simulated, estimated, or unavailable.
+
+A modelled flood-risk index is not a flood warning, and a simulated climate scenario is not an official weather forecast.
+
+For detailed methodology and data limitations, consult the application's **Methodology** section.
+
+---
+
+##  Run Locally
+
+You can run AquaHeat AI on your own computer for development and experimentation.
+
+### Prerequisites
+
+- Python 3.10 or a compatible version.
+- Git.
+- Internet access for live environmental data.
+- Optional API credentials for enabled external AI and AWS integrations.
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/rohanbhowm25308/Aquaheat-AI.git
+cd Aquaheat-AI
+```
+
+### Step 2: Create a Virtual Environment
+
+**Windows**
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+**macOS / Linux**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### Step 3: Install Dependencies
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### Step 4: Configure Environment Variables
+
+Review `.env.example` and configure the variables required by the features you want to use.
+
+For example:
+
+```dotenv
+LLM_PROVIDER=auto
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=amazon.nova-lite-v1:0
+USE_LIVE_DATA=0
+S3_BUCKET=
+SAGEMAKER_ENDPOINT=
+AGENTCORE_RUNTIME_ARN=
+GROQ_API_KEY=
+OPEN_METEO_API_KEY=
+```
+
+These are illustrative settings. Use the region, provider, and model identifiers supported by your actual deployment. Not every variable is required.
+
+**Security reminders:**
+
+- Never commit `.env` files or secret keys.
+- Do not place AWS credentials in frontend code.
+- Use least-privilege IAM permissions.
+- Verify third-party API usage policies and rate limits.
+
+### Step 5: Start the Application
+
+On Windows, if the repository's startup script is configured:
+
+```bat
+run.bat
+```
+
+Alternatively, try:
+
+```bash
+python app.py
+```
+
+Use the startup command specified by the current repository if it differs.
+
+### Step 6: Open the Website
+
+Navigate to:
+
+**[http://127.0.0.1:5000](http://127.0.0.1:5000)**
+
+Explore the dashboard and try a supported location or a demonstration scenario.
+
+---
+
+##  Optional AWS Integrations
+
+The project includes optional paths for integrating cloud services.
+
+- **Amazon S3:** Can store environmental data when configured.
+- **Amazon SageMaker:** Can host model inference after a compatible model and endpoint have been deployed.
+- **Amazon Bedrock:** Can power the AI decision-support layer when access and model permissions are configured.
+- **Amazon Bedrock AgentCore:** Can support a separately configured agent runtime.
+
+These services require their own deployment steps and permissions. Creating a cloud resource does not automatically connect it to the application.
+
+---
+
+- `app.py` — Flask application and core risk logic.
+- `extras.py` — Additional feature modules.
+- `geo.py` — Location search and environmental data handling.
+- `static/` — Frontend assets.
+- `aws/` — Optional AWS deployment resources.
+- `agentcore/` — Optional agent-runtime configuration.
+- `tests/` — Test files.
+- `requirements.txt` — Python dependencies.
+
+This is an overview; exact files and runtime-generated directories may vary with the repository version.
+
+---
+
+##  Explore These Scenarios
+
+| Scenario               | What to investigate                                       |
+| ---------------------- | --------------------------------------------------------- |
+|  Heatwave            | How higher temperatures affect estimated heat risk        |
+|  Heavy rainfall     | How rainfall changes affect the flood-risk index          |
+|  Drought            | How reduced rainfall influences water-scarcity estimates  |
+|  Water conservation  | How lower water demand changes the simulated outcome      |
+|  Groundwater stress | How groundwater-stress inputs influence the Nexus score   |
+|  Resilience planning | Which potential measures could be explored for a scenario |
+
+These scenarios are intended for experimentation and learning, not as verified predictions of specific future events.
+
+---
+
+## 👨‍💻 About the Developer
+
+**AquaHeat AI is an independent personal project developed by Rohan Bhowmik.**
+
+The project explores how artificial intelligence, machine learning, environmental information, and interactive simulations can be combined to investigate heat and water resilience.
+
+It is a learning and development project focused on making environmental challenges easier to explore and understand.
+
+---
+
+##  Feedback & Contributions
+
+Suggestions, bug reports, and technical improvements are welcome.
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Implement and test your changes.
+4. Open a pull request describing your improvements.
+
+Please avoid submitting credentials, private information, or unsupported environmental claims.
+
+---
+
+## 📜 License
+
+A license has not been specified in this README. Check the repository for an existing license or add one if you want to establish permissions for others to use, modify, and redistribute the project.
+
+---
+
+\<p align="center">
+&#x20; \<strong> AquaHeat AI\</strong>
+&#x20; \<br>
+&#x20; Predict Heat. Protect Water. Prevent Crisis.
+&#x20; \<br>\<br>
+&#x20; \<em>Too Much Water. Too Little Water. AI for the Balance in Between.\</em>
+&#x20; \<br>\<br>
+&#x20; \<a href="[https://aquaheat-ai.onrender.com/](https://aquaheat-ai.onrender.com/)">Explore the Live Application →\</a>
+\</p>
