@@ -1,20 +1,25 @@
-#  AquaHeat AI
+# AquaHeat AI
 
-### Predict Heat. Protect Water. Prevent Crisis.
+Predict Heat. Protect Water. Prevent Crisis.
 
-**An AI-powered environmental intelligence platform connecting heat-risk analysis, water resilience, and interactive climate simulations.**
+An AI-powered environmental intelligence platform connecting heat-risk analysis, water resilience, and interactive climate simulations.
 
-\<p align="center">
-&#x20; \<a href="[https://aquaheat-ai.onrender.com/](https://aquaheat-ai.onrender.com/)">\<strong>🚀 Live Demo\</strong>\</a> •
-&#x20; \<a href="[https://github.com/rohanbhowm25308/Aquaheat-AI](https://github.com/rohanbhowm25308/Aquaheat-AI)">\<strong>💻 Source Code\</strong>\</a>
-\</p>
+<p align="center">
+  <a href="https://aquaheat-ai.onrender.com/">
+    <strong>🌐 View Live Demo</strong>
+  </a>
+  &nbsp; • &nbsp;
+  <a href="https://github.com/rohanbhowm25308/Aquaheat-AI">
+    <strong>💻 View Source Code</strong>
+  </a>
+</p>
 
-\<p align="center">
-&#x20; \<img src="[https://img.shields.io/badge/AI-Environmental%20Intelligence-00C9D8?style=for-the-badge](https://img.shields.io/badge/AI-Environmental%20Intelligence-00C9D8?style=for-the-badge)" alt="Environmental Intelligence">
-&#x20; \<img src="[https://img.shields.io/badge/ML-scikit--learn-orange?style=for-the-badge](https://img.shields.io/badge/ML-scikit--learn-orange?style=for-the-badge)" alt="Machine Learning">
-&#x20; \<img src="[https://img.shields.io/badge/Backend-Flask-black?style=for-the-badge](https://img.shields.io/badge/Backend-Flask-black?style=for-the-badge)" alt="Flask">
-&#x20; \<img src="[https://img.shields.io/badge/Cloud-AWS-FF9900?style=for-the-badge](https://img.shields.io/badge/Cloud-AWS-FF9900?style=for-the-badge)" alt="AWS">
-\</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/AI-Environmental%20Intelligence-00C9D8?style=for-the-badge" alt="Environmental Intelligence">
+  <img src="https://img.shields.io/badge/ML-scikit--learn-orange?style=for-the-badge" alt="Machine Learning">
+  <img src="https://img.shields.io/badge/Backend-Flask-black?style=for-the-badge" alt="Flask">
+  <img src="https://img.shields.io/badge/Cloud-AWS-FF9900?style=for-the-badge" alt="AWS">
+</p>
 
 ---
 
